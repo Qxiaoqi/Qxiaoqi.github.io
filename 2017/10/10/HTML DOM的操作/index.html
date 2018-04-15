@@ -1,0 +1,182 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>HTML DOM的操作 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">HTML DOM的操作</span>
+	</div>
+  <!-- <img src="/assets/2017-10-10/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近虽然一直在做一些小任务，但是发现对HTML元素的操作并不十分清楚，完全是为了实现而实现，代码质量太低，于是准备将DOM梳理一下。</p>
+<a id="more"></a>
+<h2 id="HTML-DOM节点树"><a href="#HTML-DOM节点树" class="headerlink" title="HTML DOM节点树"></a>HTML DOM节点树</h2><p><img src="/assets/2017-10-10/title_1.png" alt="替代文本" title="HTML DOM节点树"></p>
+<p>简单讲，通过HTML DOM，树中的所有节点都可以通过JavaScript的代码进行访问，即对HTML的元素进行修改、添加、删除等操作。此本分务必熟练掌握。</p>
+<p>为了便于理解关于节点问题，我从W3c引一个例子，如下代码段：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">title</span>&gt;</span>DOM 教程<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">h1</span>&gt;</span>DOM 第一课<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">p</span>&gt;</span>Hello world!<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>从上面代码中</p>
+<ul>
+<li>&lt;head&gt; 和 &lt;body&gt; 的父节点是 &lt;html&gt; 节点</li>
+<li>文本节点 “Hello world!” 的父节点是 &lt;p&gt; 节点</li>
+<li>&lt;title&gt; 节点也拥有一个子节点：文本节点 “DOM 教程”</li>
+<li>&lt;h1&gt; 和 &lt;p&gt; 节点是同胞节点，同时也是 &lt;body&gt; 的子节点<br>并且：</li>
+<li>&lt;head&gt; 元素是 &lt;html&gt; 元素的首个子节点</li>
+<li>&lt;body&gt; 元素是 &lt;html&gt; 元素的最后一个子节点</li>
+</ul>
+<p>（顺便说一句，由于Markdown语法是最终变成HTML代码，所以尖括号会无法显示，于是可用’&amp;lt加一个;’代替前尖括号，用’&amp;gt加一个;’代替后尖括号。）</p>
+<h2 id="HTML-DOM常用方法及对象"><a href="#HTML-DOM常用方法及对象" class="headerlink" title="HTML DOM常用方法及对象"></a>HTML DOM常用方法及对象</h2><p>一些常用的 HTML DOM 方法：</p>
+<ul>
+<li>getElementById(id) - 获取带有指定 id 的节点（元素）</li>
+<li>appendChild(node) - 插入新的子节点（元素）</li>
+<li>removeChild(node) - 删除子节点（元素）</li>
+</ul>
+<p>一些常用的 HTML DOM 属性：</p>
+<ul>
+<li>innerHTML - 节点（元素）的文本值</li>
+<li>parentNode - 节点（元素）的父节点</li>
+<li>childNodes - 节点（元素）的子节点</li>
+<li>attributes - 节点（元素）的属性节点</li>
+</ul>
+<p>以上内容基本为概念，下面开始测试。</p>
+<h2 id="一、元素内容的获取"><a href="#一、元素内容的获取" class="headerlink" title="一、元素内容的获取"></a>一、元素内容的获取</h2><p>本块测试将测试innerHTML、nodeValue属性对元素内容的获取，以及nodeName及nodeType的作用测试。</p>
+<p>将要操作的HTML代码如下：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">"div"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">h1</span> <span class="attr">id</span>=<span class="string">"h1"</span>&gt;</span>Hello<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p"</span>&gt;</span>Word<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h3 id="1、innerHTML获取目标内容："><a href="#1、innerHTML获取目标内容：" class="headerlink" title="1、innerHTML获取目标内容："></a>1、innerHTML获取目标内容：</h3><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> text1 = <span class="built_in">document</span>.getElementById(<span class="string">'h1'</span>).innerHTML;</span><br><span class="line"><span class="built_in">document</span>.write(text1);</span><br></pre></td></tr></table></figure>
+<p>可以看到innerHTML直接获取了目标内容，虽然此时处在文本节点的父节点位置。</p>
+<h3 id="2、nodeValue获取："><a href="#2、nodeValue获取：" class="headerlink" title="2、nodeValue获取："></a>2、nodeValue获取：</h3><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> text2 = <span class="built_in">document</span>.getElementById(<span class="string">'h1'</span>);</span><br><span class="line"><span class="built_in">document</span>.write(text2.firstChild.nodeValue);</span><br></pre></td></tr></table></figure>
+<p>需要注意的是当获取id之后此时处于h1元素位置处，innerHTML可以直接获取内容。而nodeValue则需先用firstChild等获取目标文本节点，然后用nodeValue获取内容。</p>
+<p><strong> 补充nodeName作用 </strong><br>nodeName 属性规定节点的名称。</p>
+<ul>
+<li>元素节点的 nodeName 与标签名相同</li>
+<li>属性节点的 nodeName 与属性名相同</li>
+<li>文本节点的 nodeName 始终是 #text</li>
+</ul>
+<p><strong> 补充nodeType作用 </strong><br>nodeType 属性返回节点的类型。nodeType 是只读的。</p>
+<h2 id="二、元素的访问"><a href="#二、元素的访问" class="headerlink" title="二、元素的访问"></a>二、元素的访问</h2><p>访问这部分主要测试getElementsByTagName() 方法、getElementsByClassName() 方法这两个。</p>
+<p>将要操作的HTML代码如下：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p1"</span> <span class="attr">class</span>=<span class="string">"x"</span>&gt;</span>这句为div外面第一个p<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">p</span> &gt;</span>这句为div外面第二个p<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">"div"</span> <span class="attr">class</span>=<span class="string">"x"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">h1</span> <span class="attr">id</span>=<span class="string">"h1"</span> <span class="attr">class</span>=<span class="string">"x"</span>&gt;</span>Hello<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p2"</span> <span class="attr">class</span>=<span class="string">"x"</span>&gt;</span>这句为div里面第一个p<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p3"</span>&gt;</span>这句为div里面第二个p<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h3 id="1、getElementsByTagName方法"><a href="#1、getElementsByTagName方法" class="headerlink" title="1、getElementsByTagName方法"></a>1、getElementsByTagName方法</h3><p>作用：getElementsByTagName() 返回带有指定标签名的所有元素。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> t1 = <span class="built_in">document</span>.getElementsByTagName(<span class="string">'p'</span>);</span><br><span class="line"><span class="built_in">document</span>.write(t1[<span class="number">0</span>].innerHTML);</span><br><span class="line"><span class="built_in">document</span>.write(t1[<span class="number">2</span>].innerHTML);</span><br><span class="line"><span class="built_in">document</span>.write(<span class="string">'&lt;br&gt;'</span>);</span><br></pre></td></tr></table></figure>
+<p>上例输出为：<br>这句为div外面第一个p这句为div里面第一个p</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//当已经用getElementById获取时</span></span><br><span class="line"><span class="keyword">var</span> t2 = <span class="built_in">document</span>.getElementById(<span class="string">'div'</span>).getElementsByTagName(<span class="string">'p'</span>);</span><br><span class="line"><span class="built_in">document</span>.write(t2[<span class="number">0</span>].innerHTML);</span><br><span class="line"><span class="built_in">document</span>.write(<span class="string">'&lt;br&gt;'</span>);</span><br></pre></td></tr></table></figure>
+<p>输出为：<br>这句为div里面第一个p</p>
+<p>从上面两例可以看出当没有限定时，获取到的元素为所有部分，但是当已经限定在id为div的标签时，此时则只会获取到标签内的部分。</p>
+<h3 id="2、getElementsByClassName方法"><a href="#2、getElementsByClassName方法" class="headerlink" title="2、getElementsByClassName方法"></a>2、getElementsByClassName方法</h3><p>如果希望查找带有相同类名的所有 HTML 元素，请使用这个方法。<br>注意该方法与IE 5,6,7,8不兼容</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> t3 = <span class="built_in">document</span>.getElementsByClassName(<span class="string">'x'</span>);</span><br><span class="line"><span class="built_in">document</span>.write(t3[<span class="number">0</span>].innerHTML);</span><br><span class="line"></span><br><span class="line"><span class="comment">//当获取到整块div时，innerHTML会将整个内容获取</span></span><br><span class="line"><span class="built_in">document</span>.write(t3[<span class="number">1</span>].innerHTML);</span><br></pre></td></tr></table></figure>
+<p>注意浏览器的兼容性，尽量少用该方法，或直接用相应代码兼容IE低版本。</p>
+<h2 id="三、元素的修改"><a href="#三、元素的修改" class="headerlink" title="三、元素的修改"></a>三、元素的修改</h2><p>这部分内容并不复杂，因此把代码贴上，以便查看即可。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p1"</span>&gt;</span>Hello<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">type</span>=<span class="string">"text/javascript"</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="javascript">	<span class="comment">//元素修改</span></span></span><br><span class="line"><span class="javascript">	<span class="built_in">document</span>.getElementById(<span class="string">'p1'</span>).innerHTML = <span class="string">"World"</span>;</span></span><br><span class="line"><span class="javascript">	<span class="built_in">document</span>.getElementById(<span class="string">'p1'</span>).style.color = <span class="string">'blue'</span>;</span></span><br><span class="line"><span class="undefined"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>上面的操作即修改内容，以及修改CSS样式。</p>
+<h2 id="四、元素的添加与删除"><a href="#四、元素的添加与删除" class="headerlink" title="四、元素的添加与删除"></a>四、元素的添加与删除</h2><p>元素内容的添加与删除是DOM操作的核心，这部分较为重要，综合运用了以上三部分内容。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE html&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">title</span>&gt;</span><span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p1"</span>&gt;</span>Hello<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">"a"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p2"</span>&gt;</span>第一行<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p3"</span>&gt;</span>第二行<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">script</span> <span class="attr">type</span>=<span class="string">"text/javascript"</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="javascript">		<span class="comment">//元素修改</span></span></span><br><span class="line"><span class="javascript">		<span class="built_in">document</span>.getElementById(<span class="string">'p1'</span>).innerHTML = <span class="string">"World"</span>;</span></span><br><span class="line"><span class="javascript">		<span class="built_in">document</span>.getElementById(<span class="string">'p1'</span>).style.color = <span class="string">'blue'</span>;</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">		<span class="comment">//appendChild插入</span></span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> node = <span class="built_in">document</span>.createElement(<span class="string">'p'</span>);</span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> textNode = <span class="built_in">document</span>.createTextNode(<span class="string">"第三行"</span>);</span></span><br><span class="line"><span class="undefined">		node.appendChild(textNode);</span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> element = <span class="built_in">document</span>.getElementById(<span class="string">'a'</span>);</span></span><br><span class="line"><span class="undefined">		element.appendChild(node);</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">		<span class="comment">//使用insertBefore</span></span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> new_node = <span class="built_in">document</span>.createElement(<span class="string">'p'</span>);</span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> new_textNode = <span class="built_in">document</span>.createTextNode(<span class="string">'第零行'</span>);</span></span><br><span class="line"><span class="undefined">		new_node.appendChild(new_textNode);</span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> child1 = <span class="built_in">document</span>.getElementById(<span class="string">'p2'</span>);</span></span><br><span class="line"><span class="undefined">		element.insertBefore(new_node,child1);</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">		<span class="comment">//removeChild删除</span></span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> child2 = <span class="built_in">document</span>.getElementById(<span class="string">'p2'</span>);</span></span><br><span class="line"><span class="undefined">		element.removeChild(child2);</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">		<span class="comment">//使用parentNode查找其父元素</span></span></span><br><span class="line"><span class="javascript">		<span class="keyword">var</span> child3 = <span class="built_in">document</span>.getElementById(<span class="string">'p3'</span>);</span></span><br><span class="line"><span class="undefined">		child3.parentNode.removeChild(child3);</span></span><br><span class="line"><span class="undefined">	</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>appendChild() 作为父元素最后一个子元素插入</li>
+<li>insertBefore() 插入想要插入元素之前</li>
+<li>removeChild() 删除相应元素（需先获取其父元素）</li>
+<li>parentNode() 查找其父元素（可应用于上一方法）</li>
+</ul>
+<p>说到查找元素，这里还要比较一下childNodes和children的区别，两者都是获取父元素的子元素，但是具体实现功能还是不太一样。测试如下：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"p1"</span>&gt;</span>Hello world!<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">"parent"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span>&gt;</span>第一行<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span>&gt;</span>第二行<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span>&gt;</span>第三行<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="javascript">	<span class="keyword">var</span> p = <span class="built_in">document</span>.getElementById(<span class="string">'parent'</span>);</span></span><br><span class="line"><span class="javascript">	<span class="built_in">document</span>.write(p.childNodes[<span class="number">0</span>].nodeName+<span class="string">"&lt;br&gt;"</span>);</span></span><br><span class="line"><span class="javascript">	<span class="built_in">document</span>.write(p.children[<span class="number">0</span>].nodeName);</span></span><br><span class="line"><span class="javascript">	p.childNodes[<span class="number">3</span>].innerHTML = <span class="string">"新行"</span>;</span></span><br><span class="line"><span class="undefined"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>输出结果为<br><img src="/assets/2017-10-10/title_4.png" alt="替代文本" title="输出结果"></p>
+<p>可以看到childNodes[0]所指向的元素是div中的文本节点，而children[0]则指向的是div中的第一个p节点，因此可以看出childNodes更加的细致，而children更加的好用，而且便于理解。</p>
+<h2 id="五、对事件作出反应"><a href="#五、对事件作出反应" class="headerlink" title="五、对事件作出反应"></a>五、对事件作出反应</h2><p>本部分简要提一下主要内容</p>
+<ul>
+<li>onclick 用户点击完成时触发</li>
+<li>onload 用户进入页面时触发</li>
+<li>onchange 当用户改变输入字段时触发（一般用于input标签）</li>
+<li>onmouseover 鼠标指针移动到元素时触发</li>
+<li>onmouseout 鼠标指针离开元素时触发</li>
+<li>onmousedown 鼠标按钮点击时触发</li>
+<li>onmouseup 鼠标按钮被松开时触发</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>DOM操作基本内容大概就这么多，虽然整理了这么多，对这些也有了一个更加清晰的认识，但是离熟练使用还有一段距离，还是要不断的多练习，才能有更大的提高。继续努力。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

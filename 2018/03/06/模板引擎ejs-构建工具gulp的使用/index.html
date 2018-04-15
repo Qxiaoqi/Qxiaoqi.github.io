@@ -1,0 +1,150 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>模板引擎ejs+gulp-ejs插件的使用 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">模板引擎ejs+gulp-ejs插件的使用</span>
+	</div>
+  <!-- <img src="/assets/2018-3-6/before.png" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>由于接了个项目，项目里面有很多样式重复的页面，或者还有比如说header或者footer这些每个页面几乎都有的模块。如果按照以往的技术，我肯定会选择直接复制粘贴啦，但是这样的最大问题就是，如果页面改动，那么你要逐个页面的去改动才能将整个网站改变，这样费时费力。于是乎，本着需求驱动技术的原则，学习了一下前端模板引擎ejs。当然，除了ejs还有很多模板引擎，但是业务紧急就选择了这么一个语法比较简单技术。为了将ejs本地编译成html，自动化构建工具进入视野，相比于grunt，我又选择了一个相对容易上手的gulp这么个工具。</p>
+<a id="more"></a>
+<h2 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h2><p>此处已默认全局安装gulp工具</p>
+<h5 id="本地安装gulp"><a href="#本地安装gulp" class="headerlink" title="本地安装gulp"></a>本地安装gulp</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install --save -dev gulp</span><br></pre></td></tr></table></figure>
+<ul>
+<li>此处使用cnpm似乎无法安装，暂时未搞清楚原因</li>
+</ul>
+<h5 id="本地安装gulp-ejs"><a href="#本地安装gulp-ejs" class="headerlink" title="本地安装gulp-ejs"></a>本地安装gulp-ejs</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install --save -dev gulp-ejs</span><br></pre></td></tr></table></figure>
+<ul>
+<li>此处<code>--save</code>和<code>-dev</code>自动把模块和版本号添加到package.json中devdependencies部分</li>
+</ul>
+<h2 id="项目结构"><a href="#项目结构" class="headerlink" title="项目结构"></a>项目结构</h2><ul>
+<li>dist<ul>
+<li>layout.html //gulp-ejs插件生成结果</li>
+</ul>
+</li>
+<li>include<ul>
+<li>footer.html </li>
+<li>header.html</li>
+</ul>
+</li>
+<li>node_modules<ul>
+<li>……. //一些npm包</li>
+</ul>
+</li>
+<li>gulpfile.js //gulp任务文件</li>
+<li>layout.ejs //ejs文件</li>
+<li>package-lock.json //配置文件</li>
+</ul>
+<h2 id="ejs部分"><a href="#ejs部分" class="headerlink" title="ejs部分"></a>ejs部分</h2><p>ejs部分的语法比较的少，目前用到的就是</p>
+<ul>
+<li>&lt;% ‘脚本’ 标签，用于流程控制，无输出。</li>
+<li>&lt;%_ 删除其前面的空格符</li>
+<li>&lt;%= 输出数据到模板（输出是转义 HTML 标签）</li>
+<li>&lt;%- 输出非转义的数据到模板</li>
+<li>&lt;%# 注释标签，不执行、不输出内容</li>
+<li>&lt;%% 输出字符串 ‘&lt;%’</li>
+<li>%&gt; 一般结束标签</li>
+<li>-%&gt; 删除紧随其后的换行符</li>
+<li>%&gt; 将结束标签后面的空格符删除</li>
+</ul>
+<h5 id="layout-ejs"><a href="#layout-ejs" class="headerlink" title="layout.ejs"></a>layout.ejs</h5><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE html&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">title</span>&gt;</span><span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">%-include</span> <span class="attr">include</span>/<span class="attr">header.html</span> %&gt;</span>   </span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span>&gt;</span> 这是 layout 的内容 <span class="tag">&lt;/<span class="name">p</span>&gt;</span>   </span><br><span class="line">	<span class="tag">&lt;<span class="name">%-include</span> <span class="attr">include</span>/<span class="attr">footer.html</span> %&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">%</span> <span class="attr">if</span> (<span class="attr">condition</span>) &#123; <span class="attr">-</span>%&gt;</span></span><br><span class="line">		&lt;% for (var i = 0; i &lt; students.length; i++) &#123; -%&gt;</span><br><span class="line">			<span class="tag">&lt;<span class="name">li</span>&gt;</span><span class="tag">&lt;<span class="name">%=</span> <span class="attr">students</span>[<span class="attr">i</span>]%&gt;</span><span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">%</span> &#125; <span class="attr">-</span>%&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">%</span> &#125; <span class="attr">else</span> &#123; <span class="attr">-</span>%&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">p</span>&gt;</span>condition !== true<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">%</span> &#125; <span class="attr">-</span>%&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>此处注意<code>&lt;%- &gt;</code>和<code>&lt;% &gt;</code>的区别，加上’-‘并不会转义，而不加的话可以直接使用<code>&lt;% include include/header.ejs %&gt;</code>ejs书写的模板</p>
+<h5 id="header-html"><a href="#header-html" class="headerlink" title="header.html"></a>header.html</h5><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// ./include/header.html </span><br><span class="line"><span class="tag">&lt;<span class="name">h1</span>&gt;</span>header<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h5 id="footer-html"><a href="#footer-html" class="headerlink" title="footer.html"></a>footer.html</h5><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// ./include/footer.html</span><br><span class="line"><span class="tag">&lt;<span class="name">h1</span>&gt;</span>footer<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h5 id="gulpfile-js"><a href="#gulpfile-js" class="headerlink" title="gulpfile.js"></a>gulpfile.js</h5><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> gulp = <span class="built_in">require</span>(<span class="string">'gulp'</span>);</span><br><span class="line"><span class="keyword">var</span> ejs  = <span class="built_in">require</span>(<span class="string">'gulp-ejs'</span>);</span><br><span class="line"><span class="keyword">var</span> data = <span class="built_in">require</span>(<span class="string">'gulp-data'</span>);</span><br><span class="line"> </span><br><span class="line">gulp.task(<span class="string">'ejs'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    gulp.src(<span class="string">'**.ejs'</span>)</span><br><span class="line">        .pipe(ejs(&#123; </span><br><span class="line">        	students: [<span class="string">"stu1"</span>, <span class="string">"stu2"</span>, <span class="string">"stu3"</span>],</span><br><span class="line">        	condition: <span class="literal">false</span></span><br><span class="line">        &#125;, &#123;&#125;, &#123; <span class="attr">ext</span>: <span class="string">'.html'</span> &#125;))</span><br><span class="line">    .pipe(gulp.dest(<span class="string">'dist'</span>));</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>然后在命令行中使用<code>gulp ejs</code>即gulp+任务名称的格式来执行任务，输出结果。ejs第一个参数为传递的数据，第二个基本不用，第三个是输出html文件</p>
+<h5 id="layout-html"><a href="#layout-html" class="headerlink" title="layout.html"></a>layout.html</h5><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// ./dist/layout.html</span><br><span class="line"><span class="meta">&lt;!DOCTYPE html&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">title</span>&gt;</span><span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">h1</span>&gt;</span>header<span class="tag">&lt;/<span class="name">h1</span>&gt;</span>   </span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span>&gt;</span> 这是 layout 的内容 <span class="tag">&lt;/<span class="name">p</span>&gt;</span>   </span><br><span class="line">	<span class="tag">&lt;<span class="name">h1</span>&gt;</span>footer<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line"></span><br><span class="line">			<span class="tag">&lt;<span class="name">p</span>&gt;</span>condition !== true<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>由此即可完成ejs模板的使用</p>
+<h2 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h2><p>此外，推荐一个github上的项目，gulp-ejs-demo,感觉挺好用的，而且作者是hexo博客主题indigo的作者，风格我挺喜欢的。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

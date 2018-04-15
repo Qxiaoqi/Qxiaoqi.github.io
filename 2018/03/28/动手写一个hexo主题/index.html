@@ -1,0 +1,144 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>动手写一个hexo主题 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">动手写一个hexo主题</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>自己写一个博客主题的想法已经很久了，而且加上想在找工作的时候能有一些拿得出手而且能体现我个人特点的作品出来，能体现出来具有代码能力+一点设计能力。感觉博客主题就是一个很好的作品。刚好之前用了一下ejs，了解了一下模板引擎的内容，觉得技术上已经具备的差不多了，于是开始动手实现了。在这里要感谢一下我的第一个博客主题yilia的作者，给了我给大的帮助。</p>
+<a id="more"></a>
+<h2 id="前期准备"><a href="#前期准备" class="headerlink" title="前期准备"></a>前期准备</h2><p>首先确定技术栈：HTML+CSS+JS+less+ejs+hexo</p>
+<p>基本的技术栈就是上面所说的内容了，hexo提供了很多方便的变量和辅助函数，更方便我们自己实现一个自己的博客内容。</p>
+<h3 id="项目结构"><a href="#项目结构" class="headerlink" title="项目结构"></a>项目结构</h3><p>主要介绍一下themes里面的结构，外面需要注意的就是一个<code>_config.yml</code>的文件，这个文件放了一些配置内容，yml文件即YAML语言，是一种用来写配置文件的语言，比JSON要更加的方便。</p>
+<ul>
+<li>languages        //语言文件夹，可放置一些语言（比如英语、法语之类的）</li>
+<li>layout        //布局文件夹,用于存放主题的模板文件<ul>
+<li>_partial  //放一些ejs和less的模板文件</li>
+<li>archive.ejs     //归档页面模板</li>
+<li>index.ejs     //主页页面模板</li>
+<li>layout.ejs     //整体模板，本目录下的其他的ejs会显示在body中</li>
+<li>post.ejs         //文章模板</li>
+</ul>
+</li>
+<li>script         //脚本文件夹，在启动时，Hexo 会载入此文件夹内的 JavaScript 文件</li>
+<li>source         //资源文件夹，例如 CSS、JavaScript 文件等</li>
+<li>_config.yml     //主题配置文件，有很多变量和辅助函数可方便博客内容的调用</li>
+</ul>
+<h2 id="设计主题"><a href="#设计主题" class="headerlink" title="设计主题"></a>设计主题</h2><p>由于我个人其实还是挺喜欢艺术的，之前也学了不少美术之类的东西，所以想把博客主题设计的有一些涂鸦的气息，想给人一种就写博客就像一种涂鸦的感觉。整个主题也构思了大概三天吧，大概讲一下我的设计思路，虽然不是说非常满意最后的设计，但是也基本满意了。</p>
+<h3 id="设计思路"><a href="#设计思路" class="headerlink" title="设计思路"></a>设计思路</h3><p>首先，是确定博客页面的整体结构，我看了很多博客。布局上主要分为两种，一种就是类似网站官网的那种直接从上到下的结构，还有一种就是类似yilia主题的这种左侧导航栏，右边是博客内容的这种。</p>
+<p>这两种结构到底选择哪一种我也犹豫了好久，从艺术效果上考虑，我个人更倾向于第一种布局，因为这种布局给人发挥的空间很大，比如说banner部分可以提供一些炫酷的画面，留给我设计的空间很大。但是从功能上考虑，这次是要设计一个博客的主题，那么博客的作用是什么呢？方便查阅，方便阅读，文字优先，这些都是博客的功能。</p>
+<p>作为一个博客，当然应该是功能优先，我在想，假如我是一个想查一些技术的用户，那么假设我打开第一种布局，可能我的第一印象是，哇这个网站好炫酷，好有感觉之类，但是多次进入之后可能就会觉得有点厌烦了，每次查东西都要往下拉，感觉很麻烦。假设我打开第二种布局，可能第一感觉并没有很惊艳的感觉，但是多次进入查阅技术的时候可能就会觉得很方便，每次进入都能很迅速的查到想查的内容。</p>
+<p>然后就是确定整体基调了，有了上面的分析，那么基调也能很快确定下来了。简洁，涂鸦这两个词就是博客的主题。所以说留给我整体设计的可以说主要就是左侧的导航栏部分了，为了有涂鸦的感觉，当然就要找一些涂鸦的背景了，还有字体上要有感觉一些。还有一处，为了体现出来我的个性，我决定用鼠标画一个头像。</p>
+<p>上面是从设计的内容考虑，但是作为一个技术人员，当然还要考虑实现了。设计完之后主要的问题就是两点。</p>
+<ul>
+<li>第一点就是由于我使用github pages（买不起服务器_(:3」∠❀)_）所以这个页面的加载速度就成了一个问题，使用过多的图片会造成加载速度上的一些问题，以至于好长时间加载不出来页面。</li>
+<li>第二个问题就是我在导航栏部分使用了网上下载的字体，倘若用户电脑里面没有（基本可以确定没有）用别的字体代替的话感觉会影响整体效果。那么解决方案目前想到两个，第一个就是使用font-face(还没用过),第二个就是使用图片了，但是第二个方案感觉最好还是不要使用了，加载速度太慢，而且导航栏部分是非常重要的内容，加载不出来的话很影响体验。</li>
+</ul>
+<h3 id="效果"><a href="#效果" class="headerlink" title="效果"></a>效果</h3><p>整体效果<br><img src="/assets/2018-3-28/hexo-style.jpg"></p>
+<h2 id="构建"><a href="#构建" class="headerlink" title="构建"></a>构建</h2><h3 id="脚手架"><a href="#脚手架" class="headerlink" title="脚手架"></a>脚手架</h3><p>之前不是很了解什么是脚手架，现在懂了，脚手架可以简单理解为快速的生成某种结构，可以大大减少工作量。那么这次就使用了<code>yo</code>这个工具，并使用<code>generator-hexo-theme</code>来快速构建项目。</p>
+<p>注意，这里我遇到了一个坑，使用<code>git bash</code>的话会在选择技术栈的时候会出现选择错误的问题，改用<code>cmd</code>才成功。</p>
+<h3 id="hexo工作"><a href="#hexo工作" class="headerlink" title="hexo工作"></a>hexo工作</h3><p>hexo提供了很多便利，在source文件夹下面写的css文件和js文件最终会编译到public文件夹的里面，然后在主题的config文件里面写上相应的public根目录下相应文件，然后在html中引入即可。然后ejs会自动编译，但是需要按照相应的名称命名。</p>
+<h3 id="gulp自动编译"><a href="#gulp自动编译" class="headerlink" title="gulp自动编译"></a>gulp自动编译</h3><p>在写less的时候又遇到了一个问题，就是引入的css文件位置在<code>/public/css/</code>里面，然而我如果写在source里面写less的话每次都要<code>hexo g</code>一下，来生成静态页面（less会自动编译到public/css/graffiti.css里面），这样就很麻烦了。</p>
+<p>解决方法，使用gulp来自动编译，每次监听less文件改动，然后自动编译到<code>public/css/graffiti.css</code>这里，这样就能在<code>hexo server</code>服务器开启的情况下f5刷新了，方便了很多。</p>
+<p>但是这里又遇到一个问题，那就是我在很多博客的package.json配置里面看到比如说webpack这个包，都写在了<code>/themes/[主题名称]/package.json</code>里面，然而如果在主题文件夹里面使用npm安装相应的npm包的话，在<code>hexo server</code>时候会报错，原因就是这个node_modules文件夹不能在主题文件夹里面，那么问题来了，我究竟该怎么做？</p>
+<p>很明显，按道理讲webpack这个工具作为开发时候使用的，而在运行时并不需要，那就是说写在themes文件里面的devDependencies里面比较好。</p>
+<p><strong>gulpfile.js文件如下</strong><br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> gulp = <span class="built_in">require</span>(<span class="string">'gulp'</span>);</span><br><span class="line"><span class="keyword">var</span> less = <span class="built_in">require</span>(<span class="string">'gulp-less'</span>);</span><br><span class="line"><span class="keyword">var</span> plumber = <span class="built_in">require</span>(<span class="string">'gulp-plumber'</span>);  <span class="comment">//处理管道崩溃问题</span></span><br><span class="line"><span class="keyword">var</span> notify = <span class="built_in">require</span>(<span class="string">'gulp-notify'</span>);  <span class="comment">//报错与不中断当前任务</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//less编译</span></span><br><span class="line">gulp.task(<span class="string">'less'</span>,<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> gulp.src(<span class="string">'source/css/graffiti.less'</span>)  <span class="comment">//找到需要编译的less文件</span></span><br><span class="line">        .pipe(plumber(&#123;<span class="attr">errorHandler</span>: notify.onError(<span class="string">'Error:&lt;%= error.message %&gt;;'</span>)&#125;))  <span class="comment">//如果less文件中有语法错误，用notify插件报错，用plumber保证任务不会停止</span></span><br><span class="line">        .pipe(less())  <span class="comment">//如果没错误，就编译less</span></span><br><span class="line">        .pipe(gulp.dest(<span class="string">'../../public/css/'</span>))  <span class="comment">//把css文件放到hexo引用的css文件夹下</span></span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'watchLess'</span>,<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line"><span class="comment">//监听所有less文件，如果有变化，则执行less编译方法</span></span><br><span class="line">    gulp.watch([<span class="string">'source/css/graffiti.less'</span>],[<span class="string">'less'</span>]);</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//新建一个任务列表，把监听任务与服务器任务都放在列表中</span></span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'taskList'</span>, [<span class="string">'watchLess'</span>]);</span><br><span class="line"></span><br><span class="line"><span class="comment">//修改默认任务</span></span><br><span class="line">gulp.task(<span class="string">'default'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    gulp.start(<span class="string">'taskList'</span>);  <span class="comment">//执行任务列表</span></span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></p>
+<p>那么动手写主题的前期准备基本完成了，下面就开始写主题了</p>
+<h2 id="主题部分"><a href="#主题部分" class="headerlink" title="主题部分"></a>主题部分</h2><h3 id="侧边导航栏"><a href="#侧边导航栏" class="headerlink" title="侧边导航栏"></a>侧边导航栏</h3><p>导航栏的设计主要是一个大背景，然后从上到下分别是头像，昵称，导航菜单。然后会有一个选中效果，由于我想让选中后出现涂鸦的效果，涂鸦必然会显示到其他的li标签部分，所以在li处设置background明显不可以。为了达成这个效果，要写一个和a标签的兄弟元素，这个部分设置成绝对定位，通过js控制选中后显示出来。</p>
+<p>hover伪类并不能达成这个效果，因为我的结构是选中a标签时其兄弟元素div显示，但是hover要么控制自身，要么控制其子元素，对其他并不支持（其实当为兄弟元素时，可以使用+号来控制，但是父元素就不行了，尽量还是js控制简单一点）。</p>
+<p>同时，为了控制背景显示的位置，可以把其父元素li标签设置成relative来定位。然后就是计算图像的大小写width和height了。</p>
+<p><strong>HTML</strong><br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">%</span> <span class="attr">Object.keys</span>(<span class="attr">theme.menu</span>)<span class="attr">.forEach</span>(<span class="attr">function</span>(<span class="attr">key</span>) &#123; %&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">li</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"menu-hover &lt;%-key%&gt;-hover"</span>&gt;</span><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">a</span> <span class="attr">id</span>=<span class="string">"&lt;%=key%&gt;"</span> <span class="attr">href</span>=<span class="string">"&lt;%=theme.menu[key]%&gt;"</span>&gt;</span><span class="tag">&lt;<span class="name">%=key%</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">%</span> &#125;); %&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p><strong>CSS</strong><br><figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">//其中的一部分</span><br><span class="line"><span class="selector-class">.Home-hover</span> &#123;</span><br><span class="line">	<span class="attribute">position</span>: absolute;</span><br><span class="line">	<span class="attribute">width</span>: <span class="number">120px</span>;</span><br><span class="line">	<span class="attribute">height</span>: <span class="number">132px</span>;</span><br><span class="line">	<span class="attribute">left</span>: <span class="number">50%</span>;</span><br><span class="line">	<span class="attribute">margin-left</span>: -<span class="number">60px</span>;</span><br><span class="line">	<span class="attribute">top</span>: -<span class="number">30px</span>;</span><br><span class="line"></span><br><span class="line">	<span class="attribute">display</span>: none;</span><br><span class="line">	<span class="attribute">z-index</span>: -<span class="number">5</span>;</span><br><span class="line">	<span class="attribute">background</span>: <span class="built_in">url</span>(<span class="string">'../img/hover-1.png'</span>) no-repeat;</span><br><span class="line">	<span class="attribute">background-size</span>: <span class="number">100%</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><strong>JS</strong><br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//其中一部分</span></span><br><span class="line">$(<span class="string">"#Home"</span>).mouseenter(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">		<span class="comment">// $(".Home-hover").css("display","block");</span></span><br><span class="line">		$(<span class="string">".Home-hover"</span>).fadeIn(<span class="number">100</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">	$(<span class="string">"#Home"</span>).mouseleave(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">		<span class="comment">// $(".Home-hover").css("display","none");</span></span><br><span class="line">		$(<span class="string">".Home-hover"</span>).fadeOut(<span class="number">100</span>);</span><br><span class="line">	&#125;);</span><br></pre></td></tr></table></figure></p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

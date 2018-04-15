@@ -1,0 +1,117 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>gulp整理 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">gulp整理</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在写hexo主题的时候，准备写一个自动编译的gulpfile文件，发现之前看的gulp相关内容并不很清晰，于是重新看了一遍，有了心得体会。</p>
+<a id="more"></a>
+<h2 id="gulp-src"><a href="#gulp-src" class="headerlink" title="gulp.src"></a>gulp.src</h2><h3 id="pipe"><a href="#pipe" class="headerlink" title="pipe"></a>pipe</h3><p>pipe的意思是管，然后gulp是流(stream)，之前使用的时候还不太懂pipe什么用，现在再看一遍终于有了一点感受。pipe可以理解为将流这个东西用管道将其引入别的地方。</p>
+<p>举个例子，gulp文档里面的一段</p>
+<blockquote>
+<p>gulp.src(‘client/templates/*.jade’)<br>  .pipe(jade())<br>  .pipe(minify())<br>  .pipe(gulp.dest(‘build/minified_templates’));</p>
+</blockquote>
+<p>首先解释一下，jade是一个模板引擎（现在叫pug），minify是一个压缩js和css的工具（比如说压缩成一行）。那么这段代码的意思就是将一个<code>client/templates/</code>下的所有jade后缀文件pipe到jade这个插件编译一下，编译成css文件，然后pipe到minify插件压缩一下，最后pipe到dest中输出到目标位置。</p>
+<h3 id="base"><a href="#base" class="headerlink" title="base"></a>base</h3><p>base也是一个比较有用的选项，可以控制base目录，也就是可以可以空输出的目录，详细可以查<a href="https://www.gulpjs.com.cn/docs/api/" target="_blank" rel="noopener">gulp文档</a></p>
+<h3 id="gulp-watch"><a href="#gulp-watch" class="headerlink" title="gulp.watch"></a>gulp.watch</h3><p>可以监听文件的变化，当文件发生了变化可以自己定义一些任务。举一个gulp文档的例子</p>
+<blockquote>
+<p>var watcher = gulp.watch(‘js/*<em>/</em>.js’, [‘uglify’,’reload’]);<br>watcher.on(‘change’, function(event) {<br>  console.log(‘File ‘ + event.path + ‘ was ‘ + event.type + ‘, running tasks…’);<br>});</p>
+</blockquote>
+<p>那么意思就是监听<code>js/\**/*.js</code>文件，当发生变化的时候执行uglify和reload任务，并输出一些信息。event.path出发该事件的路径，event.type是该文件的类型。</p>
+<ul>
+<li>注意glob路径，之前就是因为这个问题导致我重新看了一边gulp文档，受益匪浅</li>
+</ul>
+<h2 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h2><p>其实有时侯还很犹豫要不要整理一些看似没必要整理的东西，其实这篇整理的时候主要是整理pipe的意义。有时侯我总以为我能记在脑子里，但是实际上，过一段时间我总是忘掉了。所以我觉得整理还是很有必要的，比如说这次的整理，我重新查了一些文档，感觉自己似乎懂了，但是当我尝试把它写在博客里的时候，我发现我并不是十分的清楚。当把它写完时，我发现我真的清晰了很多。所以不要犹豫是不是内容太简单了，或者浪费时间之类的，整理下来真的能提高很多。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

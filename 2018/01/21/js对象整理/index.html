@@ -1,0 +1,145 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>js对象整理 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">js对象整理</span>
+	</div>
+  <!-- <img src="/assets/2018-1-21/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>之前正在整理问卷平台项目，其中整理到了new这一用法，但发现自己其实对JS对象这一部分并不太熟悉，以及原型链究竟是如何不太清楚，所以便有了这一篇博客的整理，整理内容来自JavaScript权威指南。</p>
+<a id="more"></a>
+<h2 id="对象简介"><a href="#对象简介" class="headerlink" title="对象简介"></a>对象简介</h2><p>JavaScript语言是动态的————可以新增属性也可以删除属性————但他们常用来模拟静态对象以及静态类型语言中的”结构体”。有时它们也用做字符串的集合。</p>
+<h3 id="对象创建三种方法"><a href="#对象创建三种方法" class="headerlink" title="对象创建三种方法"></a>对象创建三种方法</h3><p>对象的创建可以通过三种方法，分别是对象直接量创建，通过new创建，通过Object.create()方法创建。</p>
+<h4 id="1-对象直接量"><a href="#1-对象直接量" class="headerlink" title="1.对象直接量"></a>1.对象直接量</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> book = &#123;</span><br><span class="line">	<span class="string">"title"</span>: <span class="string">"javascript"</span>,</span><br><span class="line">	<span class="string">"author"</span>: <span class="string">"张三"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如上，便是直接创建对象的方法。</p>
+<h4 id="2-通过new创建对象"><a href="#2-通过new创建对象" class="headerlink" title="2.通过new创建对象"></a>2.通过new创建对象</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> o = <span class="keyword">new</span> <span class="built_in">Object</span>();		<span class="comment">//创建一个空对象</span></span><br><span class="line"><span class="keyword">var</span> a = <span class="keyword">new</span> <span class="built_in">Array</span>();		<span class="comment">//创建一个空数组</span></span><br><span class="line"><span class="keyword">var</span> d = <span class="keyword">new</span> <span class="built_in">Date</span>();			<span class="comment">//创建一个表示当前事件的Date对象</span></span><br><span class="line"><span class="keyword">var</span> r = <span class="keyword">new</span> <span class="built_in">RegExp</span>(<span class="string">"js"</span>);	<span class="comment">//创建一个可以进行模式匹配的对象</span></span><br></pre></td></tr></table></figure>
+<p>上面三种都是通过内置构造函数，还有自定义构造函数，比如</p>
+<p><img src="/assets/2018-1-21/constructor-1.png"></p>
+<p>直接使用function构造函数，然后下面通过new来定义变量，下面两个分别为带不带参数以及带两个参数的构造</p>
+<p><img src="/assets/2018-1-21/constructor-2.png"><br><img src="/assets/2018-1-21/constructor-3.png"></p>
+<p>另外，值得一提的是<code>__proto__</code>属性，该属性是用于查询/设置对象的原型，但是似乎并不支持IE和Opera（此处并未测试），所以不建议使用，点开后会发现有一个<code>constructor</code>属性，指代其构造函数，如下图所示，但是此处并未理解透彻，需待以后深入理解。</p>
+<p><img src="/assets/2018-1-21/constructor-4.png"></p>
+<h4 id="3-Object-create-方法创建"><a href="#3-Object-create-方法创建" class="headerlink" title="3.Object.create()方法创建"></a>3.Object.create()方法创建</h4><p>第一个参数是这个对象的原型，第二个可选参数是对对象属性的进一步描述，例如</p>
+<p><img src="/assets/2018-1-21/object-create-1.png"></p>
+<h3 id="对象属性特性"><a href="#对象属性特性" class="headerlink" title="对象属性特性"></a>对象属性特性</h3><ul>
+<li>可写，表明是否可以设置该属性的值</li>
+<li>可枚举，表明是否可以通过for/in循环返回该属性</li>
+<li>可配置，表明是否可以通过删除或修改属性</li>
+</ul>
+<h2 id="对象检测属性"><a href="#对象检测属性" class="headerlink" title="对象检测属性"></a>对象检测属性</h2><p>检测对象里面包含的属性，可使用<code>in</code>、<code>hasOwnProperty</code>、<code>propertyIsEnumerable</code>方法来完成该工作。</p>
+<p><img src="/assets/2018-1-21/test.png"></p>
+<h5 id="in"><a href="#in" class="headerlink" title="in"></a>in</h5><p><img src="/assets/2018-1-21/test-in.png"></p>
+<h5 id="hasOwnPreperty"><a href="#hasOwnPreperty" class="headerlink" title="hasOwnPreperty"></a>hasOwnPreperty</h5><p><img src="/assets/2018-1-21/test-hasOwnProperty.png"></p>
+<h5 id="propertyIsEnumerable-NaN"><a href="#propertyIsEnumerable-NaN" class="headerlink" title="propertyIsEnumerable"></a>propertyIsEnumerable</h5><p><img src="/assets/2018-1-21/test-propertyIsEnumerable.png"></p>
+<h4 id="三者之间区别"><a href="#三者之间区别" class="headerlink" title="三者之间区别"></a>三者之间区别</h4><p><code>in</code>自有属性和继承属性都能返回true，<code>hasOwnPreperty</code>自有属性返回ture，继承属性返回false，<code>propertyIsEnumerable</code>自有属性为可枚举时才返回true，是hasOwnpreperty的增强版</p>
+<h2 id="getter和setter"><a href="#getter和setter" class="headerlink" title="getter和setter"></a>getter和setter</h2><p>由getter和setter属性定义的属性称作“存储器属性”，不同于“数据属性”，当调用getter方法时，返回值就是属性表达式的值，当程序设置一个存取器属性的值时，将调用setter方法，将右侧的值当作参数传入setter。如果属性同时具有getter和setter方法，那么他是一个读/写属性，如果只有getter则是只读。只有setter则是只写，读取数据将返回undefined。</p>
+<h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p><img src="/assets/2018-1-21/getter-1.png"></p>
+<p>如上图是一个定义getter和setter的实例，注意，theta只有getter方法，没有setter方法，所以是只读的，下面进行测试</p>
+<p><img src="/assets/2018-1-21/getter-2.png"></p>
+<p>可以看出上图，都获取到了相应的值</p>
+<p><img src="/assets/2018-1-21/getter-3.png"></p>
+<p>对比看出，对r的修改成功了，而对theta的修改并没有成功。</p>
+<h3 id="通过getOwnPropertyDescriptor-方法获得属性描述"><a href="#通过getOwnPropertyDescriptor-方法获得属性描述" class="headerlink" title="通过getOwnPropertyDescriptor()方法获得属性描述"></a>通过getOwnPropertyDescriptor()方法获得属性描述</h3><ul>
+<li>value: 值</li>
+<li>writable: 可写性</li>
+<li>enumerable: 可枚举性</li>
+<li>configurable: 可配置性</li>
+</ul>
+<p><img src="/assets/2018-1-21/getOwnPropertyDscriptor-1.png"></p>
+<h3 id="通过definePeoperty-方法修改属性描述"><a href="#通过definePeoperty-方法修改属性描述" class="headerlink" title="通过definePeoperty()方法修改属性描述"></a>通过definePeoperty()方法修改属性描述</h3><p>可通过该方法修改或直接添加数据属性</p>
+<p><img src="/assets/2018-1-21/defineProperty-1.png"></p>
+<p><img src="/assets/2018-1-21/defineProperty-2.png"></p>
+<p>上面即通过definePeoperty添加的一个x数据以及修改的属性</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本来这次想把原型链也顺带整理一下，结果发现这也是一块比较复杂的东西，所以决定详细学习一下类的使用继承方法等内容之后再来详细整理一下类和模块以及原型链的内容。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>background属性和img标签对比 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">background属性和img标签对比</span>
+	</div>
+  <!-- <img src="/assets/2018-3-17/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>background这个属性可以说是很常见了，基本上是使用的非常频繁的一个属性，但是真说起来background属性，我又不能说是十分的清楚。本来说准备整理一下background属性，但是在整理的时候又发现了许多不清楚的地方，比如说和img区别？那么先把问题一个一个罗列下来，逐个解决。</p>
+<p>在此，我要更正一个错误。那就是，原来我认为能用background-image解决的就不用img标签(似乎img用不到了？)，但是详细了解之后认为这是不正确的，区别将在问题一进行介绍。</p>
+<a id="more"></a>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>1.background-image和img的区别？</p>
+<p>2.background-size各个属性功能？</p>
+<p>3.什么时候使用background什么时候使用img？</p>
+<p>4.使用background-image的时候可以使其自适应屏幕宽度（比如说做轮播图的时候，可以指定宽度为width:100%，然后再指定一个height，使用background-size来让其充满），但是若使用img的话如何来达到这种效果。在我的印象中，img若指定width:100%的话height也会相应的变化，意思就是成比例变化，如果说同时指定width和height的话，若比例不对，图像会变形（拉伸、压缩之类的）。那么这种情况下，如何适应用户的不同屏幕？这个问题也是整理这篇文章的最大原因。</p>
+<h2 id="解答"><a href="#解答" class="headerlink" title="解答"></a>解答</h2><h3 id="问题一：background-image和img的区别-amp-amp-问题三：什么时候使用background什么时候使用img？"><a href="#问题一：background-image和img的区别-amp-amp-问题三：什么时候使用background什么时候使用img？" class="headerlink" title="问题一：background-image和img的区别 &amp;&amp; 问题三：什么时候使用background什么时候使用img？"></a>问题一：background-image和img的区别 &amp;&amp; 问题三：什么时候使用background什么时候使用img？</h3><p>边整理区别的时候，再stack Overflow上看到了一个整理的很好的答案，感觉开启了新世界的大门。在此，我要推荐一下stack Overflow这个网站，除了全是英语阅读比较困难外，基本上很多问题都能在上面找到。果然对程序员来说stack Overflow和github两个网站就能解决大部分问题。比搜索引擎查的答案更加的全面，在此引用一下答案</p>
+<p><img src="/assets/2018-3-17/answer.png" alt="answer"></p>
+<p>上面的答案可以说是很全面了，那么大概翻译一下，提取几个要点，如下</p>
+<h5 id="使用img的情况"><a href="#使用img的情况" class="headerlink" title="使用img的情况"></a>使用img的情况</h5><ul>
+<li><p>当你想让打印页面时，你想让图片被默认包含在你的页面上，请使用img标签</p>
+</li>
+<li><p>当图像带有重要语义的时候，比如警告图标，请使用img标签（带有alt文本）因为这样的话即时因为一些问题而使图片没有加载出来，但是由于有alt属性，可以让文本代替图片，以至于重要信息不会因为图片无法加载而丢失。想象一下，如果使用background-image的话，倘若没法加载图片将会怎么样，也许就会错过一些重要的信息</p>
+</li>
+<li><p>如果图像是内容的一部分，最好使用img+alt </p>
+</li>
+<li><p>如果你想让图像成比例放大或缩小，请使用img标签。background-image只能制定宽和高，虽然可以指定background-size，但依然不是成比例的，必然有一部分内容会缺失。</p>
+</li>
+<li><p>使用img而不是背景图像可以显著提高动画在后台的性能【这句话暂时并未理解】</p>
+</li>
+<li><p>当你想你的图片能被搜索引擎搜索到时，或者说更便于做SEO【答案来自其他人】</p>
+</li>
+</ul>
+<h5 id="使用backgroung-image的情况"><a href="#使用backgroung-image的情况" class="headerlink" title="使用backgroung-image的情况"></a>使用backgroung-image的情况</h5><ul>
+<li><p>如果图像不是内容的一部分，请使用CSS背景图像</p>
+</li>
+<li><p>使用CSS背景图像做图像替换的文本</p>
+</li>
+<li><p>如果你需要提高下载时间，就像CSS sprites 【css sprites的一个特性是似乎能让所有图片合成一张加载，这样能改善下载时间，为什么呢，学过数字图像处理可以知道，每个图像的颜色表都不一样，每一张图都需要一个颜色表的话自然不如只有一个颜色表占用空间少。具体css sprites内容还不太清楚】</p>
+</li>
+<li><p>使用backgroung-size，以拉伸背景图像填充整个窗口。</p>
+</li>
+</ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>那么整理一下可以知道了，当使用不包含内容的图像，比如说背景的时候，那么完全可以使用background-image来让工作变得更加简单。但是倘若包含重要内容，应该使用img来作为一个HTML标签存在其中。</p>
+<h3 id="问题二：background-size各个属性功能？"><a href="#问题二：background-size各个属性功能？" class="headerlink" title="问题二：background-size各个属性功能？"></a>问题二：background-size各个属性功能？</h3><p>引自MDN</p>
+<blockquote>
+<p>background 是CSS简写属性，用来集中设置各种背景属性。background 可以用来设置一个或多个属性:background-color, background-image, background-position, background-repeat, background-size, background-attachment。</p>
+</blockquote>
+<p>background初始值：</p>
+<blockquote>
+<p>background-image: none<br>  background-position: 0% 0%<br>  background-size: auto auto<br>  background-repeat: repeat<br>  background-origin: padding-box<br>  background-clip: border-box<br>  background-attachment: scroll<br>  background-color: transparent</p>
+</blockquote>
+<ul>
+<li><p><code>background-color</code>用于设置背景色</p>
+</li>
+<li><p><code>background-image</code>用于引入图片</p>
+</li>
+<li><p><code>background-position</code>规定背景图像位置</p>
+</li>
+<li><p><code>background-repeat</code>规定是否平铺</p>
+</li>
+<li><p><code>background-size</code>规定图像尺寸</p>
+</li>
+<li><p><code>background-attachment</code>设置背景图像是否固定或者随着页面的其余部分滚动</p>
+</li>
+</ul>
+<h5 id="background-position"><a href="#background-position" class="headerlink" title="background-position"></a>background-position</h5><p>测试图700px,700px</p>
+<p><img src="/assets/2018-3-17/demo.jpg" height="200px"></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE html&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">title</span>&gt;</span>background-position<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">style</span> <span class="attr">type</span>=<span class="string">"text/css"</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="css">		<span class="selector-class">.test</span> &#123;</span></span><br><span class="line"><span class="undefined">			width: 600px;</span></span><br><span class="line"><span class="undefined">			height: 600px;</span></span><br><span class="line"><span class="css">			<span class="selector-tag">background-image</span>: <span class="selector-tag">url</span>("<span class="selector-tag">demo</span><span class="selector-class">.jpg</span>");</span></span><br><span class="line"><span class="undefined">			//background-position: 0% center;</span></span><br><span class="line"><span class="undefined">		&#125;</span></span><br><span class="line"><span class="undefined">	</span><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"test"</span>&gt;</span><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>将position注释的时候，可以看到处于默认状态0% 0%的状态，那么注释之后原图变成了</p>
+<p><img src="/assets/2018-3-17/Lab1-1.jpg" height="200px"></p>
+<p>可以看到左边框的黑线仍能显示，而上边框的黑线已经没有了，那么得出结论，第一个值可以理解成左右位置，而第二个则可以理解成上下位置，center则代表上下居中。其他同理。</p>
+<h5 id="background-repeat"><a href="#background-repeat" class="headerlink" title="background-repeat"></a>background-repeat</h5><p>当图片宽或者高小于css指定的宽或者高时，空白的部分将被平铺，如图</p>
+<p><img src="/assets/2018-3-17/Lab2-1.jpg" height="200px"></p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.test</span> &#123;</span><br><span class="line">			<span class="attribute">width</span>: <span class="number">730px</span>;</span><br><span class="line">			<span class="attribute">height</span>: <span class="number">730px</span>;</span><br><span class="line">			<span class="attribute">background-image</span>: <span class="built_in">url</span>(<span class="string">"demo.jpg"</span>);</span><br><span class="line">			<span class="attribute">background-color</span>: <span class="number">#000000</span>;</span><br><span class="line">			<span class="comment">/*background-position: 0% center;*/</span></span><br><span class="line">			<span class="attribute">background-repeat</span>: repeat;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+<p>当设置成no-repeat时，可以看到有黑色背景透出，则可看出效果。</p>
+<p><img src="/assets/2018-3-17/Lab2-2.jpg" height="200px"></p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">background-repeat</span>: <span class="selector-tag">no-repeat</span>;</span><br></pre></td></tr></table></figure>
+<h5 id="background-size"><a href="#background-size" class="headerlink" title="background-size"></a>background-size</h5><p>做一个测试，来说明具体工作情况</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.test</span> &#123;</span><br><span class="line">			<span class="attribute">width</span>: <span class="number">400px</span>;</span><br><span class="line">			<span class="attribute">height</span>: <span class="number">300px</span>;</span><br><span class="line">			<span class="attribute">background-image</span>: <span class="built_in">url</span>(<span class="string">"demo.jpg"</span>);</span><br><span class="line">			<span class="attribute">background-color</span>: <span class="number">#000000</span>;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-1.jpg" height="200px"></p>
+<p>可以看到不设置background-size时显示不全</p>
+<p>1.当都设置成100%时</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.test</span> &#123;</span><br><span class="line">			<span class="attribute">width</span>: <span class="number">400px</span>;</span><br><span class="line">			<span class="attribute">height</span>: <span class="number">300px</span>;</span><br><span class="line">			<span class="attribute">background-image</span>: <span class="built_in">url</span>(<span class="string">"demo.jpg"</span>);</span><br><span class="line">			<span class="attribute">background-color</span>: <span class="number">#000000</span>;</span><br><span class="line">			<span class="attribute">background-repeat</span>: no-repeat;</span><br><span class="line">			<span class="attribute">background-size</span>: <span class="number">100%</span> <span class="number">100%</span>;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-2.jpg" height="200px"></p>
+<p>可以看到长和宽都被拉伸到了最大限度</p>
+<p>2.当第一个设置成100%时</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">background-size</span>: 100% <span class="selector-tag">auto</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-3.jpg" height="200px"></p>
+<p>可以看到宽被拉到100%</p>
+<p>3.当第二个设置成100%时</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">background-size</span>: <span class="selector-tag">auto</span> 100%;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-4.jpg" height="200px"></p>
+<p>可以看到高被拉到了100%</p>
+<p>4.设置成cover</p>
+<blockquote>
+<p>把背景图像扩展至足够大，以使背景图像完全覆盖背景区域。背景图像的某些部分也许无法显示在背景定位区域中。</p>
+</blockquote>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.test</span> &#123;</span><br><span class="line">			<span class="attribute">width</span>: <span class="number">400px</span>;</span><br><span class="line">			<span class="attribute">height</span>: <span class="number">300px</span>;</span><br><span class="line">			<span class="attribute">background-image</span>: <span class="built_in">url</span>(<span class="string">"demo.jpg"</span>);</span><br><span class="line">			<span class="attribute">background-color</span>: <span class="number">#000000</span>;</span><br><span class="line">			<span class="comment">/*background-position: 0% center;*/</span></span><br><span class="line">			<span class="attribute">background-repeat</span>: no-repeat;</span><br><span class="line">			<span class="attribute">background-size</span>: cover;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-5.jpg" height="200px"></p>
+<p>改变width和height</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.test</span> &#123;</span><br><span class="line">			<span class="attribute">width</span>: <span class="number">300px</span>;</span><br><span class="line">			<span class="attribute">height</span>: <span class="number">400px</span>;</span><br><span class="line">			<span class="attribute">background-image</span>: <span class="built_in">url</span>(<span class="string">"demo.jpg"</span>);</span><br><span class="line">			<span class="attribute">background-color</span>: <span class="number">#000000</span>;</span><br><span class="line">			<span class="comment">/*background-position: 0% center;*/</span></span><br><span class="line">			<span class="attribute">background-repeat</span>: no-repeat;</span><br><span class="line">			<span class="attribute">background-size</span>: cover;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2018-3-17/Lab3-6.jpg" height="200px"></p>
+<p>可以看到结果不一样，即解释了什么叫做使背景完全覆盖背景区域,就是说将宽或者高大的哪一个拉到最大</p>
+<p>5.设置成contain </p>
+<blockquote>
+<p>把图像图像扩展至最大尺寸，以使其宽度和高度完全适应内容区域。</p>
+</blockquote>
+<p>测试方法同上，第一个设置<code>width:400px;height:300px</code>第二个设置<code>width:300px;height:400px</code>，结果如下，第一个</p>
+<p><img src="/assets/2018-3-17/Lab3-7.jpg" height="200px"></p>
+<p>第二个</p>
+<p><img src="/assets/2018-3-17/Lab3-8.jpg" height="200px"></p>
+<p>则可以充分看出确实是高或者宽完全适应背景区域</p>
+<h5 id="background-attachment"><a href="#background-attachment" class="headerlink" title="background-attachment"></a>background-attachment</h5><blockquote>
+<p>scroll    默认值。背景图像会随着页面其余部分的滚动而移动。<br>fixed    当页面的其余部分滚动时，背景图像不会移动。<br>inherit    规定应该从父元素继承 background-attachment 属性的设置。</p>
+</blockquote>
+<p>默认是会滚动的，当设置成fixed的时候，背景就会固定不动，可以借此做出比较炫酷的效果。</p>
+<h3 id="问题四：关于轮播图"><a href="#问题四：关于轮播图" class="headerlink" title="问题四：关于轮播图"></a>问题四：关于轮播图</h3><p>关于这个问题，我想了想，倘若使用img标签的话（通过上面整理img应该更适合做轮播图，因为它在页面中可以说是比较重要的元素之一），那么就要从图片的大小上下手了，图片必须有一定的规范。首先轮播图的每个图片大小必须相同（或者说宽高比例相同），而且比例要适应浏览器，防止宽高比例不均的时候发生页面过大或过小的情况。我想这可能都是一些设计师的规范，而我对设计的领域了解并不深入，也许我想的是对的，也许是错的。但是这是我目前能想到的唯一解决方案。</p>
+<p>使用background确实方便，但是为了网站的规范，我觉得有必要使用img标签。</p>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>没想到竟然整理了这么多，background元素属性虽然看起来简单，但整理之前真让我详细的说我并不能说出来十分确切的内容，整理之后觉得对这方面的内容了解得更加深入的许多。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

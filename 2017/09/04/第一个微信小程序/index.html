@@ -1,0 +1,109 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>第一个微信小程序 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">第一个微信小程序</span>
+	</div>
+  <!-- <img src="/assets/2017-09-04/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>开发该微信小程序算上UI设计以及之前的一些准备，大概花费了一个月的时间，从需求分析到最后的开发完成，中间遇到了很多困难，但也收获颇多。其中，我参与的工作是UI设计以及前端代码的实现。虽然最后产品因为一些原因并未能上线，但是其中的收获无疑是巨大的。</p>
+<a id="more"></a>
+<h2 id="遇见see微信小程序的开发体会"><a href="#遇见see微信小程序的开发体会" class="headerlink" title="遇见see微信小程序的开发体会"></a>遇见see微信小程序的开发体会</h2><h3 id="一、关于UI设计"><a href="#一、关于UI设计" class="headerlink" title="一、关于UI设计"></a>一、关于UI设计</h3><p>首先我并不是专搞设计的，只是对其有些兴趣，所以论起专业性还差的很远。</p>
+<p>1、关于界面设计，一定要从用户的角度去思考，很多东西只是因为你是开发者，所以对其功能很熟悉，但倘若是用户的第一次使用，用户能快速的找到其想要找到的功能吗，显然，本次设计并不满足，很多功能的名称模棱两可，并不十分鲜明，连我自己有时候都会对其名称产生疑惑，更别提用户的使用了。名称缺少鲜明的特征。</p>
+<p>2、关于配色，配色一定要与产品的功能所契合，但是本次的设计总感觉档次不够，感觉重要原因之一就是颜色的使用不够贴切，其中也尝试了很多配色，但总感觉不足。而且色彩使用较为单一，并非说颜色会越多越好，但是结合微信等其他产品，其颜色并不单一，但总体感觉并不违和，因此，对色彩的思考任重道远。</p>
+<h3 id="二、关于前端代码实现"><a href="#二、关于前端代码实现" class="headerlink" title="二、关于前端代码实现"></a>二、关于前端代码实现</h3><p>1、代码十分冗杂，其中部分原因是因为开发的时候，js并没有了解很多，对很多框架更不了解，而直接选择微信开发，对其中的运用只能算是生疏，仅仅为了实现功能而写代码，功能虽然能勉强实现，但是代码的质量却十分糟糕，并不简洁。例如很多可以重复渲染的东西却将代码复制粘贴，代码及其繁琐。</p>
+<p>2、开发前缺少代码的整体规划，完全就是随性而写，一个页面一个页面的写，并没有一个整体的框架，以及其中的联系。层次混乱，代码之间的覆盖使代码并不清晰。</p>
+<p>3、对js的运用还差的多，很多功能虽然最后实现，但是其容错性还并不完善，而且从算法上考虑，似乎并不好。因此运行速度似乎有些慢？</p>
+<p>4、前后端的对接，因为是第一次对接，对其中流程以及代码实现并不了解，因此给后端人员添了很多麻烦，但因为微信小程序的API很多，所以最终还是完成了。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

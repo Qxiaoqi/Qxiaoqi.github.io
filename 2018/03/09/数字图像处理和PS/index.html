@@ -1,0 +1,118 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>数字图像处理和PS [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">数字图像处理和PS</span>
+	</div>
+  <!-- <img src="/assets/2018-3-9/before.jpeg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>学期新开了一门课，数字图像处理，上了几节课之后收获很多，和之前用PS处理图片时候以及前端的CSS很多地方相互印证，原来很多原理不懂，只是看教程上这么做就做了，现在发现有许多地方豁然开朗，于是简单整理一下。</p>
+<a id="more"></a>
+<h2 id="灰度图像和RGB"><a href="#灰度图像和RGB" class="headerlink" title="灰度图像和RGB"></a>灰度图像和RGB</h2><h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><p>灰度图像0-255个级别，0是黑色，255是白色</p>
+<p>RGB即红色，绿色，蓝色三种颜色，从0-255共256个级别。以红色R为例，如果GB都为255，那么R为0是黑色，R为255则是纯红，其他类似，因此RGB(255,255,255)就可以说是白色，因此如果能看到RGB数值就能判断出来此颜色哪一种成分更多，这也是PS中通道模块的理论支撑。</p>
+<h3 id="PS处理"><a href="#PS处理" class="headerlink" title="PS处理"></a>PS处理</h3><p><img src="/assets/2018-3-9/flame.jpg" height="300px"></p>
+<p>以上是本次处理的素材图，那么启动PS分别用红、绿、蓝三种通道观察图片，通道即把颜色分离，例如下图R通道，越白的地方说明R值越高，也就是越红，越黑的地方说明R值越低，也就越黑，将RGB三个值抽出来可用灰度图像来理解</p>
+<p>R通道<br><img src="/assets/2018-3-9/flame_red.jpg" height="300px"></p>
+<p>G通道<br><img src="/assets/2018-3-9/flame_green.jpg" height="300px"></p>
+<p>B通道<br><img src="/assets/2018-3-9/flame_blue.jpg" height="300px"></p>
+<p>那么观察图像可以看出，在R通道下白色区域最多，G通道次之，B通道最少，那么可以得出结论，该图像红色居多，绿色次之，蓝色最少几乎没有，那么为什么G通道也有很多白区域呢，原因即火焰中有很多黄色区域，而且红色和绿色值越高，也就越黄。那么有什么用呢。我们知道PS经常需要切图，对于轮廓清晰的图片，我们当然可以手工切图，或者自动选区之类的，但是如果我们要把该火焰图片切出来存成png格式图片呢，手工切不太可能，自动选取效果也不理想，那么我们就可以通过通道图来切图。</p>
+<p>切换成R通道图，然后ctrl+左键在R通道下选区</p>
+<p><img src="/assets/2018-3-9/flame_red_deal.jpg" height="300px"></p>
+<p>然后拖出来</p>
+<p><img src="/assets/2018-3-9/flame_red_res.jpg" height="300px"></p>
+<p>于是火焰就切出来了，似乎看起来不太亮，那是因为对比的原因，如果背景换成黑色，那么和原图近乎一样，除了一些边缘没有切出来，其他基本一样</p>
+<p>将切出来的图片放在黑色背景下的最终效果</p>
+<p><img src="/assets/2018-3-9/flame_res.jpg" height="300px"></p>
+<p>感觉火焰更加凝练了，之后就可通过滤镜之类的自由修改了</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

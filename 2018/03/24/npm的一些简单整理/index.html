@@ -1,0 +1,128 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>npm的一些简单整理 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">npm的一些简单整理</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>关于npm的使用一直不是很熟练，想要操作一些东西的时候总要查一下，觉得太麻烦了，所以这次就准备整理一下使用npm过程中的一些命令，以方便日后快速查询</p>
+<a id="more"></a>
+<h2 id="全局安装和本地安装"><a href="#全局安装和本地安装" class="headerlink" title="全局安装和本地安装"></a>全局安装和本地安装</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npm install module-name <span class="comment"># 本地安装</span></span><br><span class="line">npm install -g module-name <span class="comment"># 全局安装</span></span><br></pre></td></tr></table></figure>
+<h3 id="全局安装和本地安装区别"><a href="#全局安装和本地安装区别" class="headerlink" title="全局安装和本地安装区别"></a>全局安装和本地安装区别</h3><blockquote>
+<p>本地安装</p>
+<ol>
+<li>将安装包放在 ./node_modules 下（运行npm时所在的目录）</li>
+<li>可以通过 require() 来引入本地安装的包</li>
+</ol>
+</blockquote>
+<blockquote>
+<p>全局安装</p>
+<ol>
+<li>将安装包放在 /usr/local 下</li>
+<li>可以直接在命令行里使用</li>
+</ol>
+</blockquote>
+<h2 id="删除依赖模块"><a href="#删除依赖模块" class="headerlink" title="删除依赖模块"></a>删除依赖模块</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">npm uninstall module-name <span class="comment"># 删除模块，但不会删除dependencies中信息</span></span><br><span class="line">npm uninstall module-name --save <span class="comment"># 同时删除模块留在dependencies下的对应信息</span></span><br><span class="line">npm uninstall 模块 --save-dev 同时删除模块留在devDependencies下的对应信息</span><br></pre></td></tr></table></figure>
+<h2 id="pockage-json"><a href="#pockage-json" class="headerlink" title="pockage.json"></a>pockage.json</h2><h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><blockquote>
+<p>每个项目的根目录下面，一般都有一个package.json文件，定义了这个项目所需要的各种模块，以及项目的配置信息（比如名称、版本、许可证等元数据）。npm install命令根据这个配置文件，自动下载所需的模块，也就是配置项目所需的运行和开发环境。</p>
+</blockquote>
+<p>那么可以看出来package.json在项目中是很重要的，是一些配置信息，那么实际运行过程中可能需要一些包的支持，使用<code>npm install</code>即可完成安装。</p>
+<h3 id="将依赖模块添加到package-json中"><a href="#将依赖模块添加到package-json中" class="headerlink" title="将依赖模块添加到package.json中"></a>将依赖模块添加到package.json中</h3><p>使用<code>--save</code>和<code>--save -dev</code>可以省掉手动修改package.json文件的部分，这里面就涉及到二者的区别了。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install module-name --save</span><br></pre></td></tr></table></figure>
+<p>自动把模块和版本号添加到<code>dependencies</code>部分。而</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">npm install module-name --save-dev <span class="comment">#现在会报错，已被遗弃？</span></span><br><span class="line"></span><br><span class="line">npm install mudule-name --save --only=dev <span class="comment">#新</span></span><br></pre></td></tr></table></figure>
+<p>自动把模块和版本号添加到<code>devdependencies</code>部分。</p>
+<p>那么<code>dependencies</code>和<code>devdependencies</code>有什么区别呢？</p>
+<p>前者是项目运行时的依赖模块，后者则是项目开发时的模块。那么什么意思呢？项目运行意思就是在实际运行时候依赖的模块，而开发时候依赖的模块可以理解为开发时候依赖的模块，<strong>开发时候依赖的模块实际运行时未必需要</strong>。举个例子，比如说我使用less来写样式，最后编译成css，那么less就是我在开发时候依赖的模块，但是实际运行时侯并不需要less模块。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

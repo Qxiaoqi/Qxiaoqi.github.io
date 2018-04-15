@@ -1,0 +1,312 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title> [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<!-- 主页最近文章显示模板 -->
+<section class="posts">
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/10/24/CSS之导航栏效果/">页面效果之导航栏效果</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-10-24/before.jpeg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近在看bootstrap框架，随便看了点之后觉得框架确实方便，但是感觉用框架之后很拘束，而且bootstrap框架也挺大，为了实现某些功能而引入框架，实在有点大材小用，所以我想把一些功能自己复现一下。</p>
+<p>个人比较喜欢一些炫酷的东西，所以可能会整理一系列CSS实现的效果的博客，作为第一篇，就以导航栏为内容吧。</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-10-24</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/博客/" class="article-tag-list-link">博客</a>
+			</li>
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/效果/" class="article-tag-list-link">效果</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/10/18/jQ库与js原生代码的比较/">jQ库DOM操作与js原生代码的对比</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-10-18/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>说到这个jQ库，我之前一直搞错一个概念，以为jQ是一个框架，但是查了一些资料后呢，发现它原来是个库。那么它们的区别是什么呢，专业的讲本质区别在于控制反转（我并不理解）。那么通俗点讲，库是一个封装好的集合，控制权在使用者。而框架是一个架构，向用户提供解决方案，控制权在框架（不是我总结的）。虽然我现在并不十分了解，但以后会的O(∩_∩)O哈哈~</p>
+<p>那么不说那么专业的东西，说点我看完jQ的体会，发现jQ确实会让js编程变得简单很多，特别是Ajax的使用，jQ里面并不复杂，但是若要直接写原生js那是有点麻烦的（我暂时不会）。虽然这些东西很方便，但是我要说的是，一定不要依赖于库或者框架，前端技术发展很快，框架层出不穷，但是核心的js是不会变的，这些所有东西都是可以用原生js实现的。所以，学这些东西的时候最好再用js尝试实现相应的功能，这样才能游刃有余。</p>
+<p>好了，这次前言似乎有点长……</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-10-18</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/博客/" class="article-tag-list-link">博客</a>
+			</li>
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/JS/" class="article-tag-list-link">JS</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/10/10/HTML DOM的操作/">HTML DOM的操作</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-10-10/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近虽然一直在做一些小任务，但是发现对HTML元素的操作并不十分清楚，完全是为了实现而实现，代码质量太低，于是准备将DOM梳理一下。</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-10-10</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/博客/" class="article-tag-list-link">博客</a>
+			</li>
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/JS/" class="article-tag-list-link">JS</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/09/28/页面布局整理/">三栏布局整理</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-09-28/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>由于最近做的一个练习，用到了三栏布局，但是对其中的原理早就忘了，于是重新整理一番。</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-09-28</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/博客/" class="article-tag-list-link">博客</a>
+			</li>
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/CSS/" class="article-tag-list-link">CSS</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/09/21/博客管理命令整理/">管理博客命令</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-09-23/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>搭建博客花了我不少时间，由于各种原因，踩了很多坑，最终才将博客搭建起来，废话不多说。<br>该文章是自搭建好博客后的第一篇博客，文章将整理博客管理、github上传项目等操作命令，便于以后查阅。<br>注：该博客采用Github+hexo搭建而成<br>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-09-21</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/博客/" class="article-tag-list-link">博客</a>
+			</li>
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/命令/" class="article-tag-list-link">命令</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/09/04/第一个微信小程序/">第一个微信小程序</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-09-04/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>开发该微信小程序算上UI设计以及之前的一些准备，大概花费了一个月的时间，从需求分析到最后的开发完成，中间遇到了很多困难，但也收获颇多。其中，我参与的工作是UI设计以及前端代码的实现。虽然最后产品因为一些原因并未能上线，但是其中的收获无疑是巨大的。</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-09-04</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/总结/" class="article-tag-list-link">总结</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+    <article class="post">
+      <!-- <div class="post-decoration"></div> -->
+      <div class="post-title">
+        <a class="post-title-link" href="/2017/05/25/第一个页面/">第一个页面</a>
+      </div>
+      <div class="post-content">
+        <!-- <img src="/assets/2017-05-25/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>经过20多天的学习，用了3个晚上赶出来的首页，算是第一个比较完整地作品了吧（虽然是仿照别的设计稿做的）。本次也收获颇多，再加上最近又正在看一本书叫《web全栈工程师的自我修养》，感觉对前端又有了新的体会。</p>
+      </div>
+      <!-- tag和time -->
+      <div class="post-meta">
+        <span class="post-time">2017-05-25</span>
+        <div class="post-tags">
+          
+	<ul class="article-tag-list">
+		
+			<li class="article-tag-list-item">
+				<a href="/tags/总结/" class="article-tag-list-link">总结</a>
+			</li>
+		
+	</ul>
+
+        </div>
+      </div>
+    </article>
+  
+</section>
+
+
+
+
+<!-- 分页模板 -->
+
+  <nav class="page-nav">
+  	<div class="page-nav-inner">
+  		<a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
+  	</div>
+  </nav>
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>

@@ -1,0 +1,127 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>管理博客命令 [ Xiaoqi&#39;s blog ]</title>
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">管理博客命令</span>
+	</div>
+  <!-- <img src="/assets/2017-09-23/before.jpg" height="300px"> -->
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>搭建博客花了我不少时间，由于各种原因，踩了很多坑，最终才将博客搭建起来，废话不多说。<br>该文章是自搭建好博客后的第一篇博客，文章将整理博客管理、github上传项目等操作命令，便于以后查阅。<br>注：该博客采用Github+hexo搭建而成<br><a id="more"></a></p>
+<h2 id="一、hexo管理博客"><a href="#一、hexo管理博客" class="headerlink" title="一、hexo管理博客"></a>一、hexo管理博客</h2><h3 id="新建一篇博客"><a href="#新建一篇博客" class="headerlink" title="新建一篇博客"></a>新建一篇博客</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new [文件名]</span><br></pre></td></tr></table></figure>
+<h3 id="生成静态页面"><a href="#生成静态页面" class="headerlink" title="生成静态页面"></a>生成静态页面</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+<p>使用该命令会在博客根目录下生成public文件（该文件即上传到github上的文件）</p>
+<h3 id="清除缓存"><a href="#清除缓存" class="headerlink" title="清除缓存"></a>清除缓存</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo clear</span><br></pre></td></tr></table></figure>
+<p>使用该命令会在博客根目录下删除public文件</p>
+<h3 id="运行本地服务"><a href="#运行本地服务" class="headerlink" title="运行本地服务"></a>运行本地服务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+<p>使用该命令会在本地生成一个预览页面，浏览器输入localhost:4000，需要注意的是开启该服务后会占用4000端口，所以如果4000端口已经被占用的话会打不开页面（福昕阅读器占用端口4000？）可使用命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server -p 5000</span><br></pre></td></tr></table></figure>
+<p>该命令可将端口4000换成端口5000</p>
+<h3 id="部署页面"><a href="#部署页面" class="headerlink" title="部署页面"></a>部署页面</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+<p>使用该命令前根目录下_config.yml配置文件需将github地址等配置好,也可直接使用命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo d -g</span><br></pre></td></tr></table></figure>
+<p>直接部署前生成静态页面</p>
+<h2 id="二、github代码上传-最好在git-bash中运行"><a href="#二、github代码上传-最好在git-bash中运行" class="headerlink" title="二、github代码上传(最好在git bash中运行)"></a>二、github代码上传(最好在git bash中运行)</h2><h3 id="git初始化"><a href="#git初始化" class="headerlink" title="git初始化"></a>git初始化</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git init</span><br></pre></td></tr></table></figure>
+<h3 id="添加文件"><a href="#添加文件" class="headerlink" title="添加文件"></a>添加文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git add *</span><br></pre></td></tr></table></figure>
+<p>此处*代表将该目录下所有文件上传，若要将某文件上传，则可换为该文件名</p>
+<h3 id="commit到仓库"><a href="#commit到仓库" class="headerlink" title="commit到仓库"></a>commit到仓库</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git commit -m <span class="string">"注释语句"</span></span><br></pre></td></tr></table></figure>
+<p>注释语句可换成任意，例：第一次上传</p>
+<h3 id="本地仓库关联到github"><a href="#本地仓库关联到github" class="headerlink" title="本地仓库关联到github"></a>本地仓库关联到github</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git remote add origin https://github.com/Qxiaoqi/HTML-task.git</span><br></pre></td></tr></table></figure>
+<p>此处地址为github代码仓库的地址，复制到上处即可。其中可能报错如下</p>
+<pre><code>fatal: remote origin already exists.
+</code></pre><p>则可使用</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git remote rm origin</span><br></pre></td></tr></table></figure>
+<p>删除原来的代码仓库地址</p>
+<h3 id="上传代码"><a href="#上传代码" class="headerlink" title="上传代码"></a>上传代码</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ git push -u origin master</span><br></pre></td></tr></table></figure>
+<p>中间可能会输入账号密码</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/Graffiti.js"></script>
+  
+
+
+</body>
+</html>
