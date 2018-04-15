@@ -86,7 +86,7 @@ $(document).ready(function() {
 	//导航栏悬停涂鸦效果
 	NavigationHover();
 
-	//tag背景颜色
+	//主页tag背景颜色
 	TagBackgroundColor();
 
 })
