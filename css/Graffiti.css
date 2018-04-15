@@ -25,6 +25,113 @@ h5 {
 img {
   max-width: 100%;
 }
+.navigationBar-bg {
+  position: fixed;
+  width: 300px;
+  height: 100%;
+  box-shadow: 0 0 18px 0 #d4dee6;
+}
+.navigationBar-bg .navigationBar-content .personal-block {
+  width: 300px;
+  height: 306px;
+}
+.navigationBar-bg .navigationBar-content .personal-block .portrait {
+  height: 250px;
+  width: 300px;
+}
+.navigationBar-bg .navigationBar-content .personal-block .portrait .portrait-background {
+  position: absolute;
+  left: 50%;
+  top: 105px;
+  margin-left: -65px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background-color: #eaeaea;
+}
+.navigationBar-bg .navigationBar-content .personal-block .portrait .portrait-background .portrait-img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -61px;
+  margin-top: -61px;
+  width: 122px;
+  height: 122px;
+  border-radius: 50%;
+}
+.navigationBar-bg .navigationBar-content .personal-block .nickname {
+  text-align: center;
+  font-family: Gloria Hallelujah;
+  font-size: 35px;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu {
+  margin-top: 40px;
+  text-align: center;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li {
+  position: relative;
+  padding: 5px 0;
+  list-style: none;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li .Home-hover {
+  position: absolute;
+  width: 120px;
+  height: 132px;
+  left: 50%;
+  margin-left: -60px;
+  top: -30px;
+  display: none;
+  z-index: -5;
+  background: url('../img/hover-1.png') no-repeat;
+  background-size: 100%;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li .Archives-hover {
+  position: absolute;
+  width: 120px;
+  height: 125px;
+  left: 50%;
+  margin-left: -60px;
+  top: -30px;
+  display: none;
+  z-index: -5;
+  background: url('../img/hover-2.png') no-repeat;
+  background-size: 100%;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li .Tags-hover {
+  position: absolute;
+  width: 120px;
+  height: 138px;
+  left: 50%;
+  margin-left: -60px;
+  top: -30px;
+  display: none;
+  z-index: -5;
+  background: url('../img/hover-3.png') no-repeat;
+  background-size: 100%;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li .Github-hover {
+  position: absolute;
+  width: 120px;
+  height: 162px;
+  left: 50%;
+  margin-left: -60px;
+  top: -30px;
+  display: none;
+  z-index: -5;
+  background: url('../img/hover-4.png') no-repeat;
+  background-size: 100%;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li a {
+  display: block;
+  text-decoration: none;
+  font-family: Gloria Hallelujah;
+  font-size: 25px;
+  color: #909090;
+}
+.navigationBar-bg .navigationBar-content .navigationBar-menu li a:hover {
+  color: #000000;
+  font-weight: 700;
+}
 .content-outer {
   position: absolute;
   padding-left: 300px;
