@@ -1,3 +1,7 @@
+@font-face {
+  font-family: navfont;
+  src: url('fonts/Yank.ttf');
+}
 * {
   box-sizing: border-box;
 }
@@ -61,7 +65,7 @@ img {
 }
 .navigationBar-bg .navigationBar-content .personal-block .nickname {
   text-align: center;
-  font-family: Gloria Hallelujah;
+  font-family: navfont;
   font-size: 35px;
 }
 .navigationBar-bg .navigationBar-content .navigationBar-menu {
@@ -124,7 +128,7 @@ img {
 .navigationBar-bg .navigationBar-content .navigationBar-menu li a {
   display: block;
   text-decoration: none;
-  font-family: Gloria Hallelujah;
+  font-family: navfont;
   font-size: 25px;
   color: #909090;
 }
