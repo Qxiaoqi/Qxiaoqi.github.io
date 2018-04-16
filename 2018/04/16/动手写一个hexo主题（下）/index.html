@@ -1,0 +1,108 @@
+
+<!-- 分别定义了不同页面下博客的title显示 -->
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>动手写一个hexo主题（下）Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">动手写一个hexo主题（下）</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>这个太长了，一篇文章整理不完，另开一篇</p>
+<h3 id="Archives归档页面"><a href="#Archives归档页面" class="headerlink" title="Archives归档页面"></a>Archives归档页面</h3><h4 id="ejs结构"><a href="#ejs结构" class="headerlink" title="ejs结构"></a>ejs结构</h4><p>这个页面参照了next主题的时间线效果，感觉这个效果很漂亮。这一部分实现起来有点小绕，为什么呢？</p>
+<p>如果直接与后端交互直接获取想要的数据自然没有这些问题，但是这次使用的是hexo，提供了很多便利的同时也有很多限制，本来hexo在archives提供的有一个插入函数就是<code>list_archives</code>这个函数，这个函数会直接插入按时间归档好的一推信息，那么我不仅想显示时间，还想显示文章，这样很明显就不能用这个函数，那么就只能foreach循环，并写一些逻辑来显示。</p>
+<p>那么本着尽量少些js的想法（hexo+github不知道为什么有时候js文件在hexo d上传之后会莫名其妙删除），直接用ejs写</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">&lt;div class=&quot;archives-block&quot;&gt;</span><br><span class="line">&lt;div class=&quot;achives-margin-left&quot;&gt;</span><br><span class="line"></span><br><span class="line">&lt;% var last; %&gt;</span><br><span class="line">&lt;% page.posts.each(function(article) &#123; %&gt;</span><br><span class="line">  &lt;% var year = article.date.year(); %&gt;</span><br><span class="line"></span><br><span class="line">  &lt;% if (last != year) &#123; -%&gt;</span><br><span class="line">    &lt;% if (last != null) &#123; -%&gt;</span><br><span class="line">      &lt;/div&gt;&lt;/section&gt;</span><br><span class="line">    &lt;% &#125; -%&gt;</span><br><span class="line">    &lt;% last = year; %&gt;</span><br><span class="line">      </span><br><span class="line">    &lt;section class=&quot;archives-wrap&quot;&gt;</span><br><span class="line">      &lt;div class=&quot;archives-year-wrap&quot;&gt;</span><br><span class="line">        &lt;a href=&quot;&lt;% url_for(&apos;archives/&apos; + year ) %&gt;&quot; class=&quot;archives-year&quot;&gt;&lt;%= year %&gt;&lt;/a&gt;</span><br><span class="line">      &lt;/div&gt;</span><br><span class="line">      &lt;div class=&quot;archives&quot;&gt;</span><br><span class="line"></span><br><span class="line">        &lt;% &#125; %&gt;</span><br><span class="line">          &lt;!-- 时间归档模板部分 --&gt;</span><br><span class="line">          &lt;div class=&quot;archives-item&quot;&gt;</span><br><span class="line">            &lt;span class=&quot;archives-item-time&quot;&gt;&lt;%= date(article.date,&apos;M-D&apos;) %&gt;&lt;/span&gt;</span><br><span class="line">            &lt;a href=&quot;&lt;%= url_for(article.path)%&gt;&quot;&gt;&lt;%= article.title %&gt;&lt;/a&gt;</span><br><span class="line">          &lt;/div&gt;</span><br><span class="line">      </span><br><span class="line">&lt;% &#125;); %&gt;</span><br><span class="line"></span><br><span class="line">    &lt;/div&gt;</span><br><span class="line">    &lt;/section&gt;</span><br><span class="line">&lt;/div&gt;</span><br><span class="line">&lt;/div&gt;</span><br></pre></td></tr></table></figure>
+<p>这一段参考了yilia的作者的写法，这一部分如果只看标签的话，那么绝对是不会闭合的，因为这里面为了区分出不同年份一组的效果，使用了if判断一定条件，当满足时会将标签闭合，这样就能让不同年份的一组不在同一个标签组内。</p>
+<h4 id="前面的小圆点"><a href="#前面的小圆点" class="headerlink" title="前面的小圆点"></a>前面的小圆点</h4><p>这一个效果使用before插入</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">&amp;<span class="selector-pseudo">:before</span> &#123;</span><br><span class="line">	<span class="attribute">content</span>: <span class="string">" "</span>;</span><br><span class="line">	<span class="attribute">position</span>: absolute;</span><br><span class="line">	<span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">	<span class="attribute">top</span>: <span class="number">50%</span>;</span><br><span class="line">	<span class="attribute">margin-left</span>: -<span class="number">4px</span>;</span><br><span class="line">	<span class="attribute">margin-top</span>: -<span class="number">4px</span>;</span><br><span class="line"></span><br><span class="line">	<span class="attribute">width</span>: <span class="number">6px</span>;</span><br><span class="line">	<span class="attribute">height</span>: <span class="number">6px</span>;</span><br><span class="line">	<span class="attribute">background-color</span>: <span class="number">#bbb</span>;</span><br><span class="line">	<span class="attribute">border-radius</span>: <span class="number">50%</span>;</span><br><span class="line">	<span class="attribute">border</span>: <span class="number">1px</span> solid <span class="number">#ffffff</span>;</span><br><span class="line">	<span class="attribute">z-index</span>: <span class="number">5</span>;</span><br><span class="line">	<span class="attribute">transition-duration</span>: <span class="number">0.5s</span>;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">```		</span><br><span class="line"></span><br><span class="line">#### 前面的竖线</span><br><span class="line"></span><br><span class="line">这一部分本想用<span class="selector-tag">border-left</span>实现，但发现会有多余的部分，不如使用<span class="selector-tag">absolute</span>定位方便</span><br><span class="line"></span><br><span class="line">```<span class="selector-tag">css</span> </span><br><span class="line">	&amp;<span class="selector-pseudo">:after</span> &#123;</span><br><span class="line">		<span class="attribute">content</span>: <span class="string">" "</span>;</span><br><span class="line">		<span class="attribute">position</span>: absolute;</span><br><span class="line">		<span class="attribute">top</span>: <span class="number">42px</span>;</span><br><span class="line">		<span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">		<span class="attribute">margin-left</span>: -<span class="number">2px</span>;</span><br><span class="line"></span><br><span class="line">		<span class="attribute">width</span>: <span class="number">4px</span>;</span><br><span class="line">		<span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">		<span class="attribute">background-color</span>: <span class="number">#f5f5f5</span>;</span><br><span class="line">		<span class="attribute">z-index</span>: <span class="number">1</span>;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
