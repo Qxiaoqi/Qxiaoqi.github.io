@@ -1,17 +1,12 @@
-
-<!-- 分别定义了不同页面下博客的title显示 -->
-
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>动手写一个hexo主题（上）Xiaoqi&#39;s blog</title>
+  <title>Xiaoqi&#39;s blog</title>
 <!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
   <!-- theme为主题的config.yml -->
   
     <!-- stylesheets list from config.yml -->
-    <!-- 即对config.yml下stylesheets下外部样式的引入，但是具体怎么引入？目前还未弄清楚 -->
     
       <link rel="stylesheet" href="/css/Graffiti.css">
     
@@ -80,6 +75,8 @@
 <li>index.ejs     //主页页面模板</li>
 <li>layout.ejs     //整体模板，本目录下的其他的ejs会显示在body中</li>
 <li>post.ejs         //文章模板</li>
+<li>tag.ejs         //选中一个tag后的模板</li>
+<li>tags.ejs      //tags页面归档模板，这个是自己定义的</li>
 </ul>
 </li>
 <li>script         //脚本文件夹，在启动时，Hexo 会载入此文件夹内的 JavaScript 文件</li>
@@ -127,19 +124,6 @@
 <p>那么想引入的时候<code>font-family: navfont;</code>即可，由于我使用的github pages + hexo，所以把字体放入合适的位置就行了。</p>
 <p>除此之外，google还提供一个Google Font Api来提供这么一个效果，上这么网站，然后找一款好看的字体，引入即可，比如说我想用Do Hyeon这么一个字体，用link引入即可，后面可直接使用</p>
 <figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">link</span> <span class="attr">href</span>=<span class="string">"https://fonts.googleapis.com/css?family=Do+Hyeon"</span> <span class="attr">rel</span>=<span class="string">"stylesheet"</span>&gt;</span></span><br></pre></td></tr></table></figure>
-<h3 id="Home主页面"><a href="#Home主页面" class="headerlink" title="Home主页面"></a>Home主页面</h3><h4 id="tag随机颜色"><a href="#tag随机颜色" class="headerlink" title="tag随机颜色"></a>tag随机颜色</h4><p>这个效果主要是tag标签随机一种颜色，然后每次打开它都是这种颜色。那么怎么实现这种效果呢？</p>
-<p>首先，我是想使用js获取随机颜色然后用js把颜色给加上。那么问题来了，颜色是随机了，但是每次打开颜色都不一样，这样体验感觉很不好。因此，我们要找一个关系来让他赋予相应的颜色。</p>
-<p>首先我想的是根据首字母来划分一定区域，比如说选5种颜色，然后0-26均匀划分5段，但是，这样还有一个问题，英文字母自然没有问题，但是汉字呢，判断起来就很困难，网上也有一些插件，但是我觉得为了实现这么一个小功能就引入这么大的文件，感觉没有必要。</p>
-<p>那么第二种就想到了根据长度，这个就简单很多了，代码如下：</p>
-<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//================tag-icon颜色==========================</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> tagIcons = [</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="string">"id"</span>: <span class="number">0</span>,</span><br><span class="line">		<span class="string">"color"</span>: <span class="string">"#fd0f02"</span>		<span class="comment">//红色</span></span><br><span class="line">	&#125;,</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="string">"id"</span>: <span class="number">1</span>,</span><br><span class="line">		<span class="string">"color"</span>: <span class="string">"#42ba01"</span>		<span class="comment">//绿色</span></span><br><span class="line"></span><br><span class="line">	&#125;,</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="string">"id"</span>: <span class="number">2</span>,</span><br><span class="line">		<span class="string">"color"</span>: <span class="string">"#8a1eff"</span>		<span class="comment">//紫色</span></span><br><span class="line"></span><br><span class="line">	&#125;,</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="string">"id"</span>: <span class="number">3</span>,</span><br><span class="line">		<span class="string">"color"</span>: <span class="string">"#fe9402"</span>		<span class="comment">//橙色</span></span><br><span class="line">	&#125;,</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="string">"id"</span>: <span class="number">4</span>,</span><br><span class="line">		<span class="string">"color"</span>: <span class="string">"#0136fe"</span>		<span class="comment">//深蓝</span></span><br><span class="line">	&#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> getTagIcon = <span class="function"><span class="keyword">function</span>(<span class="params">str</span>) </span>&#123;</span><br><span class="line">	<span class="keyword">var</span> tagLength = str.length;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span>(tagLength &lt;= <span class="number">4</span>) &#123;</span><br><span class="line">		<span class="keyword">return</span> tagIcons[tagLength - <span class="number">1</span>].color;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> tagIcons[<span class="number">4</span>].color;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> TagBackgroundColor = <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">var</span> tagsAll = $(<span class="string">".article-tag-list-link"</span>);</span><br><span class="line">	<span class="comment">// console.log(tagsAll);</span></span><br><span class="line">	tagsAll.each(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">		$(<span class="keyword">this</span>).css(<span class="string">"background-color"</span>, getTagIcon($(<span class="keyword">this</span>).text()));</span><br><span class="line">	&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="post文章页面"><a href="#post文章页面" class="headerlink" title="post文章页面"></a>post文章页面</h3><p>由于hexo把markdown的相应部分都渲染成了一定的class，那么直接定义class的样式就能显示出相应的markdown效果，比如说代码块、引用之类的。</p>
-<h4 id="代码高亮问题"><a href="#代码高亮问题" class="headerlink" title="代码高亮问题"></a>代码高亮问题</h4><p>写这一部分真的心酸，我以为hexo的highlight功能开启了就能自己高亮了，实际上，凉凉。找了半天解决方法，也没找到，本来看到一篇博客引入了prettify高亮插件，但是想了想自己写一个拉到了。于是我本着自己动手的原则写了一套代码高亮的css（抄SegmentFault的代码颜色）。其实也没有想象中的艰难，hexo把一些关键字都取了类名，直接自己定一个颜色，字体大小什么的就ok了。</p>
-<p>按照一般情况，代码高亮的原理是<code>highlight.js</code>这个插件（还有别的插件），这个插件什么用呢，【源码没仔细看】，分了很多语言，里面应该是用正则判断相应的语句，比如说<code>#</code>这个注释符号。获取到之后会赋予一定的class类名。</p>
-<p>然后怎么高亮呢，很简单一个css文件就行了，相应的类名给予一定的css代码就可以了。</p>
-<h4 id="缩进问题"><a href="#缩进问题" class="headerlink" title="缩进问题"></a>缩进问题</h4><p>还有一个部分就是缩进问题了，众所周知，空格是不会显示的，所以代码缩进在页面上预览的时候是不会出现的。这时候就要用一个<code>white-space: pre-wrap;</code>自动换行并且保留空格就行了。</p>
-<h4 id="图片过大问题"><a href="#图片过大问题" class="headerlink" title="图片过大问题"></a>图片过大问题</h4><p>有时候用markdown插入图片的时候没有指定宽度，这样太大会把页面撑开，如何解决呢？</p>
-<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">img</span> &#123;</span><br><span class="line">	<span class="attribute">max-width</span>: <span class="number">100%</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>解决方案很简单对吧。是的，但是不读别人的代码，我还真没有想到过。</p>
 
 </article>
 
