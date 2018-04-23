@@ -78,6 +78,7 @@
 <p><img src="/assets/2018-1-21/constructor-4.png"></p>
 <h4 id="3-Object-create-方法创建"><a href="#3-Object-create-方法创建" class="headerlink" title="3.Object.create()方法创建"></a>3.Object.create()方法创建</h4><p>第一个参数是这个对象的原型，第二个可选参数是对对象属性的进一步描述，例如</p>
 <p><img src="/assets/2018-1-21/object-create-1.png"></p>
+<p><code>\_\_proto\_\_</code>是其继承的原型，可以看到第一层<code>\_\_proto\_\_</code>继承的是{x:1,y:2}，然后第二层<code>\_\_proto\_\_</code>继承的是Object原型。</p>
 <h3 id="对象属性特性"><a href="#对象属性特性" class="headerlink" title="对象属性特性"></a>对象属性特性</h3><ul>
 <li>可写，表明是否可以设置该属性的值</li>
 <li>可枚举，表明是否可以通过for/in循环返回该属性</li>
