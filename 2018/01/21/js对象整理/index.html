@@ -104,7 +104,7 @@
 <p>那么修改一下可枚举性</p>
 <p><img src="/assets/2018-1-21/for-in-2.jpg"><br><img src="/assets/2018-1-21/for-in-3.jpg"></p>
 <p>可以看到通过for/in循环并没有循环到属性r，也就是说可以通过设置属性的可枚举性来控制是否由for/in循环到。</p>
-<h4 id="继承下的for-i内循环"><a href="#继承下的for-i内循环" class="headerlink" title="继承下的for/i内循环"></a>继承下的for/i内循环</h4><p>同时，可以通过继承来达到for/in循环的遍历效果<br><img src="/assets/2018-1-21/for-in-4.jpg"><br><img src="/assets/2018-1-21/for-in-5.jpg"></p>
+<h4 id="继承下的for-in循环"><a href="#继承下的for-in循环" class="headerlink" title="继承下的for/in循环"></a>继承下的for/in循环</h4><p>同时，可以通过继承来达到for/in循环的遍历效果<br><img src="/assets/2018-1-21/for-in-4.jpg"><br><img src="/assets/2018-1-21/for-in-5.jpg"></p>
 <p>可以看到for/in循环循环到了xyr，倘若这时候设置其原型a的某个属性的可枚举型为false，那么也会受到影响。</p>
 <h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p><img src="/assets/2018-1-21/getter-1.png"></p>
 <p>如上图是一个定义getter和setter的实例，注意，theta只有getter方法，没有setter方法，所以是只读的，下面进行测试</p>
