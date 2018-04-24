@@ -57,48 +57,23 @@
 <div id="content-outer" class="content-outer">
   <div class="content-margin">
     <div id="content-inner" class="content-inner">
-      <div class="archives-block">
-<div class="achives-margin-left">
-
-
-
-  
-
-          
       
-    <section class="archives-wrap">
-      <div class="archives-year-wrap">
-        <a href="" class="archives-year">2018</a>
-      </div>
-      <div class="archives">
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">JS原型链</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近本来想读一下jquery源码，但是发现js基础还是太差，于是决定重新读一下js基础</p>
+<h2 id="JS原型链"><a href="#JS原型链" class="headerlink" title="JS原型链"></a>JS原型链</h2><p>JS原型链可以说是JS的核心属性之一了，那么什么是JS原型链呢。假设有一个对象o，这时候想查找o的属性x,即o.x，如果存在那么自然能直接返回，但是假如说对象o不存在属性x呢，这时候将会在o的原型对象中继续查找，若没有则继续向上查找，直到找到或原型是null为止。这样就形成了一个链，这个链就是js原型链。</p>
+<h3 id="继承"><a href="#继承" class="headerlink" title="继承"></a>继承</h3><p>说到原型链，那么就必须要提到继承这个功能，ES5中定义了一个方法,<code>Object.create()</code>方法，括号内两个参数，第一个是对象的原型。第二个可选，用来进一步描述，在JS对象整理一文中有提到。</p>
+<h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p><img src="/assets/2018-04-24/inherit-1.jpg"></p>
+<p>可以看到，定义了一个属性p继承自o</p>
+<p><img src="/assets/2018-04-24/inherit-2.jpg"></p>
+<p>然后又定义了一个q继承自p，定义了s，这个toString()继承自Object，将p展开自_proto_，可以看到q的属性z，q的原型的属性y，以及q的原型的原型的属性x，以及最后的Object原型。</p>
+<p><img src="/assets/2018-04-24/inherit-3.jpg"></p>
+<p>最后的结果展示了原型链的查找，q本来没有x和y属性，于是从其原型查找，最终找到，返回结果。</p>
 
-        
-          <!-- 时间归档模板部分 -->
-          <div class="archives-item">
-            <span class="archives-item-time">4-24</span>
-            <a href="/2018/04/24/JS原型链/">JS原型链</a>
-          </div>
-      
+</article>
 
-  
-
-  
-          <!-- 时间归档模板部分 -->
-          <div class="archives-item">
-            <span class="archives-item-time">4-16</span>
-            <a href="/2018/04/16/动手写一个hexo主题（下）/">动手写一个hexo主题（下）</a>
-          </div>
-      
-
-
-    </div>
-    </section>
-</div>
-</div>
-
-
-
-<!-- 分页模板 -->
 
 
     </div>
