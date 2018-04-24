@@ -98,6 +98,13 @@
 <h5 id="propertyIsEnumerable-NaN"><a href="#propertyIsEnumerable-NaN" class="headerlink" title="propertyIsEnumerable"></a>propertyIsEnumerable</h5><p><img src="/assets/2018-1-21/test-propertyIsEnumerable.png"></p>
 <h4 id="三者之间区别"><a href="#三者之间区别" class="headerlink" title="三者之间区别"></a>三者之间区别</h4><p><code>in</code>自有属性和继承属性都能返回true，<code>hasOwnPreperty</code>自有属性返回ture，继承属性返回false，<code>propertyIsEnumerable</code>自有属性为可枚举时才返回true，是hasOwnpreperty的增强版</p>
 <h2 id="getter和setter"><a href="#getter和setter" class="headerlink" title="getter和setter"></a>getter和setter</h2><p>由getter和setter属性定义的属性称作“存储器属性”，不同于“数据属性”，当调用getter方法时，返回值就是属性表达式的值，当程序设置一个存取器属性的值时，将调用setter方法，将右侧的值当作参数传入setter。如果属性同时具有getter和setter方法，那么他是一个读/写属性，如果只有getter则是只读。只有setter则是只写，读取数据将返回undefined。</p>
+<h3 id="getter和setter的枚举"><a href="#getter和setter的枚举" class="headerlink" title="getter和setter的枚举"></a>getter和setter的枚举</h3><p>这里假如说定义一个<code>get r()</code>或定义一个<code>set r()</code>，那么这个r也是可枚举的，也就是说可以通过for/in循环来遍历到。</p>
+<p><img src="/assets/2018-1-21/for-in-1.jpg"></p>
+<p>那么修改一下可枚举性</p>
+<p><img src="/assets/2018-1-21/for-in-2.jpg"><br><img src="/assets/2018-1-21/for-in-3.jpg"></p>
+<p>可以看到通过for/in循环并没有循环到属性r，也就是说可以通过设置属性的可枚举性来控制是否由for/in循环到。</p>
+<p>同时，可以通过继承来达到for/in循环的遍历效果<br><img src="/assets/2018-1-21/for-in-4.jpg"><br><img src="/assets/2018-1-21/for-in-5.jpg"></p>
+<p>可以看到for/in循环循环到了xyr，倘若这时候设置其原型a的某个属性的可枚举型为false，那么也会受到影响。</p>
 <h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p><img src="/assets/2018-1-21/getter-1.png"></p>
 <p>如上图是一个定义getter和setter的实例，注意，theta只有getter方法，没有setter方法，所以是只读的，下面进行测试</p>
 <p><img src="/assets/2018-1-21/getter-2.png"></p>
