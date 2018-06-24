@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">两月小结</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>从上一篇博客到这一篇大概有两个月没有更新过了，一个是确实有点忙，但是还有个原因也确实是可能变得懒了。这次小结整理一下这两个月来的进展，以及规划一下今后一小段时间内的技术方向。希望能重新开始连续更新我的博客。</p>
+<a id="more"></a>
+<h2 id="外包"><a href="#外包" class="headerlink" title="外包"></a>外包</h2><p>两个月内最大的一件事情就是和一个后端接了一个外包项目，这个项目从需求上来讲确实不算很复杂，也是我的第一个外包项目。主要功能大概是网站提供一个文件的预览和下载，然后管理员可以在后台管理页面进行一个文件的上传，其中还包含了一个权限的问题。但是尽管项目需求其实算不上很复杂，但是也耽误了不少时间，原因可能是我经验的不足。</p>
+<h3 id="整体分析"><a href="#整体分析" class="headerlink" title="整体分析"></a>整体分析</h3><p>主要就是一个需求上的不断更改，以及我个人经验的不足。比如说一个网站整体的结构本来谈的是一个确定的结构，那么我这里就把一级栏目和二级栏目都写死了。但是，后来又要求这个栏目上需要能更改，这就产生了一个很大的问题，我没有考虑到这种情况，而把结构写死了，那么这里就需要把一个网站的整体结构重构一下。这里我们采用后端把一级栏目和二级栏目的数据组织了一下，传给我，我这边通过后端返回的数据来渲染这个栏目。</p>
+<h3 id="优化：storage的使用"><a href="#优化：storage的使用" class="headerlink" title="优化：storage的使用"></a>优化：storage的使用</h3><p>本来这个栏目的渲染都是需要一个http请求来获得到相应的数据，进行一个渲染。但是这样就有一个问题，比如说这个栏目的结构基本都是固定的（后台不进行增删二级栏目），那么如果我每次渲染导航栏和二级栏目详细页面的导航栏时，都要发送一个请求来获取数据，这样的话，页面的渲染上速度并不是很流畅。</p>
+<p>那么，我这里选择使用localStorage来将首页http请求后收到的栏目数据存在本地缓存里，这样每次渲染时都可以直接使用localStorage内的数据来渲染，倘若管理员在后台更新栏目结构时，这里可以进行一个localStorage数据的更新。</p>
+<h3 id="权限的区分"><a href="#权限的区分" class="headerlink" title="权限的区分"></a>权限的区分</h3><p>这里有两个权限，一个是管理员权限，可以进入后台。另一个就是用户权限，不能进入后台。用户权限又分为游客权限和普通权限，游客权限不能下载可以预览，普通权限则可以预览和下载。</p>
+<p>这里我选择使用sessionStorage来实现这个功能，sessionStorage的生命周期是浏览器的生命周期，当会话窗口关闭的时候就会结束。那么当用户登陆的时候，这里把权限存入sessionStorage中，当为管理员权限的时候在页面上渲染出来一个入口按钮。每当点击文件的时候判断一下当前的权限，来判断操作是否可以进行下去。</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
