@@ -64,9 +64,16 @@
 	</div>
   <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近正在看P5.js这个库，这个库可以说是Processing的JS版。这个库有一套作画功能，不仅仅能在canvas上画，还能把整个浏览器都当成画布。然后对前端数据可视化方向有一些兴趣，再加上开的一门课叫计算机图形学。多者结合，才有了这样一篇文章的整理。</p>
 <a id="more"></a>
-<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>DDA算法，是一种通过多个点连成一条近似直线的算法。众所周知，一个图像的显示是由无数个像素点构成的。那么，直线也不例外，也可以看成是无数个点的集合。</p>
+<h2 id="DDA算法"><a href="#DDA算法" class="headerlink" title="DDA算法"></a>DDA算法</h2><h3 id="DDA算法原理"><a href="#DDA算法原理" class="headerlink" title="DDA算法原理"></a>DDA算法原理</h3><p>DDA算法，是一种通过多个点连成一条近似直线的算法。众所周知，一个图像的显示是由无数个像素点构成的。那么，直线也不例外，也可以看成是无数个点的集合。</p>
 <p><img src="/assets/2018-9-10/DDA-formula.png" height="200px"></p>
-<p>DDA算法即选出Δx和Δy中较大者作为最大步长，然后分别与Δx和Δy相乘得出每个方向上的单步步长，将第二个点的坐标算出来后，四舍五入近似成+0或+1</p>
+<p>DDA算法即选出Δx和Δy中较大者作为最大步长，然后分别与Δx和Δy相乘得出每个方向上的单步步长，将第二个点的坐标算出来后，四舍五入近似成+0或+1。<br>举个例子，根据上述公式可以看出，假若斜率小于1，每次x单步步长必为+1，此时只考虑y步长，算出y步长后加在上一个点上，然后使用函数进行近似，即可得出点的近似位置</p>
+<h3 id="DDA算法实现步骤"><a href="#DDA算法实现步骤" class="headerlink" title="DDA算法实现步骤"></a>DDA算法实现步骤</h3><ol>
+<li>给出两点坐标</li>
+<li>选出Δx和Δy中较大者作为最大步长</li>
+<li>算出x轴和y轴的单步步长</li>
+<li>循环画点</li>
+</ol>
+<h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><h4 id="效果图"><a href="#效果图" class="headerlink" title="效果图"></a>效果图</h4><p><img src="/assets/2018-9-10/DDA-img.jpg" height="200px"></p>
 
 </article>
 
