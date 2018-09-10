@@ -63,9 +63,10 @@
   		<span class="post-title-link">P5.js实现DDA算法和Bresenham算法</span>
 	</div>
   <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近正在看P5.js这个库，这个库可以说是Processing的JS版。这个库有一套作画功能，不仅仅能在canvas上画，还能把整个浏览器都当成画布。然后对前端数据可视化方向有一些兴趣，再加上开的一门课叫计算机图形学。多者结合，才有了这样一篇文章的整理。</p>
+<a id="more"></a>
 <h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>DDA算法，是一种通过多个点连成一条近似直线的算法。众所周知，一个图像的显示是由无数个像素点构成的。那么，直线也不例外，也可以看成是无数个点的集合。</p>
-<p><img src="/assets/2018-9-10/DDA-formula.png" height="300px"></p>
-<p>DDA算法即选出Δx和Δy中较大者作为最大步长，</p>
+<p><img src="/assets/2018-9-10/DDA-formula.png" height="200px"></p>
+<p>DDA算法即选出Δx和Δy中较大者作为最大步长，然后分别与Δx和Δy相乘得出每个方向上的单步步长，将第二个点的坐标算出来后，四舍五入近似成+0或+1</p>
 
 </article>
 
