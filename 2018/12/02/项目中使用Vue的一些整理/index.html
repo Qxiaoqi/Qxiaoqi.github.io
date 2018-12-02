@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">项目中使用Vue的一些整理</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>又是很久都没有整理过了，这次也不立什么一定要坚持写博客的flag了。这一段时间忙了一些别的事情，技术上把Vue全家桶用于项目中实践了一下，也算是收获不少。</p>
+<a id="more"></a>
+<h2 id="大概需求"><a href="#大概需求" class="headerlink" title="大概需求"></a>大概需求</h2><p>先放一张大概效果图。</p>
+<p><img src="/assets/2018-12-2/picture.jpg"></p>
+<p>需求简单点讲就是学科期刊，以及热点论文什么的查询。内容上分为六个模块，其中一个ESI学科期刊模块，两个顶级论文模块内容基本一样。查询时左侧会分别用关键词、月份、年份、学科进行过滤。然后还要支持导出excel，就是把数据整合成excel表格导出。</p>
+<p>需求并不是很复杂，但是实际写的时候确实也是考虑了很多东西，算是在代码规范上更近了一步吧。</p>
+<h2 id="结构设计"><a href="#结构设计" class="headerlink" title="结构设计"></a>结构设计</h2><h3 id="组件抽象"><a href="#组件抽象" class="headerlink" title="组件抽象"></a>组件抽象</h3><p>学科期刊和顶级论文这三个模块内容基本一致，返回数据不同，因此可以把他们归为一类。</p>
+<h4 id="左侧过滤组件"><a href="#左侧过滤组件" class="headerlink" title="左侧过滤组件"></a>左侧过滤组件</h4><p>左侧抽象出来过滤组件，其中关键词查询都有不用做过多抽象。</p>
+<p>分类检索部分分三块，也可以抽象成一个小的过滤组件。通过父级组件传值<code>filterType</code>，来确定渲染成哪一部分的过滤模块</p>
+<p>其中由于月份的显示方式不太一样，为了节省空间，一行放了两个。所以需要绑定一个特殊的class，再用一个计算属性<code>isMonth</code>来判断是否是月份过滤，来判断有<code>display: inline-block</code>的class是否显示该组件上</p>
+<p>月份、年份、学科这三个过滤条件并不是每个页面都需要，因此根据获取的路由数据来判断哪一个过滤条件需要显示</p>
+<h3 id="vuex数据管理"><a href="#vuex数据管理" class="headerlink" title="vuex数据管理"></a>vuex数据管理</h3><p>把Vuex的相关代码分割成了数个模块，便于管理。然后提交方式都是通过action异步提交（这样更规范一些？此处后面还需要深入理解一下）</p>
+<p>查询里面的条件全部都用了Vuex来管理，<code>关键词</code>、<code>页码</code>、<code>月份</code>、<code>年份</code>、<code>学科</code>（此处可能还需要深入思考一下，<code>关键词</code>、<code>月份</code>、<code>年份</code>、<code>学科</code>这四个确实还有别的兄弟组件渲染的时候需要使用，但仅仅是读取并不会修改，放在Vuex里面管理代码方便了很多，但是究竟有没有更合适的方法还需要深入思考一下。但是<code>页码</code>这个并没有别的组件需要共享，放在里面纯属是因为和后台传参的时候直接读取Vuex的数据就行，图个方便，是否合理确实还要三思一下）</p>
+<p>搜索结果，就是后端传回来的文章数据，我也把他放在了Vuex里面管理。当时想的是，获取结果有四种方式，分别是<code>页面跳转</code>、<code>关键词查询</code>、<code>过滤条件</code>、<code>页码</code>这四个部分需要从后端获取数据，后端返回数据以后直接分发提交到Vuex里面，然后页面直接响应式渲染出来（其实也是图个方便，而且也确实目前的水准想不出什么更好的方式来组织结构）。</p>
+<p>文章下载全选功能，这个应该是用的比较的合适了。就是点击全选后，所有文章前面的多选框都要确定上，然后若某一个多选框取消了，全选前面的框也要取消。从这个角度看，双方共同维护这个选中的文章数组，两方都是可读可写，此处用的应该可以说是非常合适了。</p>
+<p>因此，总结一下，Vuex用了之后非常的方便，但是也可能造成一些Vuex的滥用，目前也确实没有想到比较好的方式来管理，此处需要在项目结束之后深入思考一下。</p>
+<p>（……未完待续，项目还没写完，有时间再整理）</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
