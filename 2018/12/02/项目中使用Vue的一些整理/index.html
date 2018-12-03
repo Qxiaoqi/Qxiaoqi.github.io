@@ -78,6 +78,13 @@
 <p>搜索结果，就是后端传回来的文章数据，我也把他放在了Vuex里面管理。当时想的是，获取结果有四种方式，分别是<code>页面跳转</code>、<code>关键词查询</code>、<code>过滤条件</code>、<code>页码</code>这四个部分需要从后端获取数据，后端返回数据以后直接分发提交到Vuex里面，然后页面直接响应式渲染出来（其实也是图个方便，而且也确实目前的水准想不出什么更好的方式来组织结构）。</p>
 <p>文章下载全选功能，这个应该是用的比较的合适了。就是点击全选后，所有文章前面的多选框都要确定上，然后若某一个多选框取消了，全选前面的框也要取消。从这个角度看，双方共同维护这个选中的文章数组，两方都是可读可写，此处用的应该可以说是非常合适了。</p>
 <p>因此，总结一下，Vuex用了之后非常的方便，但是也可能造成一些Vuex的滥用，目前也确实没有想到比较好的方式来管理，此处需要在项目结束之后深入思考一下。</p>
+<h2 id="JWT鉴权验证"><a href="#JWT鉴权验证" class="headerlink" title="JWT鉴权验证"></a>JWT鉴权验证</h2><p>JWT之前一直没用过，这次和后端用了一下，在前后端分离里面用的比较多吧。</p>
+<p>那么鉴权验证的流程是什么呢？简单讲就是，前端用户登陆后，后端会返回一个token，然后前端把这个token存到localStorage或者session再或者Vuex里面管理，不同位置有不同的适用范围吧。考虑到session以及Vuex里面管理的话，刷新后就没有了，所以我存到了localStorage里面。</p>
+<p>然后每次需要鉴权的时候（比如说这里面的查询就需要鉴权，但是登陆不需要鉴权），把token加到请求头里面，发给后端进行身份验证。然后后端返回code状态码，或者直接重定向什么的都行。</p>
+<h3 id="具体的一些实现"><a href="#具体的一些实现" class="headerlink" title="具体的一些实现"></a>具体的一些实现</h3><h4 id="axios拦截"><a href="#axios拦截" class="headerlink" title="axios拦截"></a>axios拦截</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (</span><br><span class="line">  localStorage.loginUserBaseInfo &amp;&amp;</span><br><span class="line">  JSON.parse(localStorage.loginUserBaseInfo).jwtCode</span><br><span class="line">) &#123;</span><br><span class="line">  let token = JSON.parse(localStorage.loginUserBaseInfo).jwtCode;</span><br><span class="line">  config.headers.Authorization = token;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里我一开始把所有的请求都加上了token，这里就是做一个简单的判断，判断本地有没有保存token信息，保存的话就加到请求头里面。</p>
+<p>但是后来有一个问题，那就是比如登录并不需要加上token，虽然后端没有判断，一开始并没有什么问题。但是当超过了过期时间之后，我发现登录的时候有莫名的报错，看了好半天才找到了这个问题。那就是后端应该是把这个鉴权统一处理了，那只能我这边来改。</p>
+<p>解决方法，在封装过的api请求文件里面，多加上一个参数<code>requiresAuth</code>为<code>true</code>则表示需要鉴权。然后在axios拦截器里面多加上一个判断<code>config.requiresAuth &amp;&amp; config.requiresAuth === true</code>（此处需要深入理解一下Promise和ajax的区别）</p>
 <p>（……未完待续，项目还没写完，有时间再整理）</p>
 
 </article>
