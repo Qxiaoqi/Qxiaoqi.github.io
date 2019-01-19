@@ -129,7 +129,13 @@
 <p>加入是外部设置<code>line-height</code>为96px，那么则是作用到了x这个幽灵空白上，倘若是子元素设置了<code>line-height</code>，则是作用到了子元素的行框盒子上。整体行框盒子由最大的决定，因此还是96px。</p>
 <p>如果想避免幽灵空白的干扰，将上面注释掉的代码恢复，即设置<code>inline-block</code>创建一个独立的行框盒子，就能将里面的子元素不受干扰。同时满足大值特性</p>
 <p><img src="/assets/2019-1-19/line_height-7.jpg"></p>
-<h2 id="vertical-align"><a href="#vertical-align" class="headerlink" title="vertical-align"></a>vertical-align</h2>
+<h2 id="vertical-align"><a href="#vertical-align" class="headerlink" title="vertical-align"></a>vertical-align</h2><p>说到这个属性，就要提到基线，这也是很多现象产生的原因，比如说<code>vertical-align: middle</code>其实是近似垂直居中。</p>
+<p>而这近似垂直居中又导致了很多问题的出现，比如说很常见的一个布局，一行字加上一个下拉符号</p>
+<p><img src="/assets/2019-1-19/vertical_align-2.jpg"></p>
+<p>设置的都是20px大小，而且也使用了<code>vertical-align: middle</code>，但是最后的结果整个容器总是要大于20px，原因就和基线的定义有关了，如下图所示</p>
+<p><img src="/assets/2019-1-19/vertical_align-1.jpg"></p>
+<p>，那么基线的定义就是字母x的下边缘，middle则是指基线往上1/2的x-height的位置，可以理解为x中间的那个交点。看似没有什么问题，但实际上问题就由此产生，每个字体在行内盒子的位置是不一样的，上面也比较了微软雅黑和宋体两个字体的差异，可以明显发现微软雅黑字体会下沉，那么也就导致了middle和实际的中线位置会往下偏一点。那么这个偏一点具体偏多少由<code>font-size</code>的大小决定，越大则下沉的效果越明显。</p>
+
 </article>
 
 
