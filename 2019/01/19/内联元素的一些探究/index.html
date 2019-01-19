@@ -63,6 +63,7 @@
   		<span class="post-title-link">内联元素的一些探究</span>
 	</div>
   <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>本文依然是对《CSS世界》这本书中的一些知识点进行探究和实践。内联元素在CSS中极为重要，块级元素负责结构，内联元素负责内容，而CSS又是为图文展示而设计，因此显得尤为重要。同时多个属性混合在一起共同作用又会产生较为复杂的结果，比较典型的就是<code>line-height</code>和<code>vertical-align</code>，以及“幽灵空白”（CSS文档中叫strut）产生的一些现象了。</p>
+<p>文中也将从这三个方面去入手，实践一些现象产生的原因。</p>
 <a id="more"></a>
 <h2 id="幽灵空白"><a href="#幽灵空白" class="headerlink" title="幽灵空白"></a>幽灵空白</h2><p>“幽灵空白”这个概念并非没有意义，内联元素中产生的很多看似很难解释的现象其实很多都和这个“幽灵空白”息息相关。</p>
 <h3 id="证明幽灵空白存在"><a href="#证明幽灵空白存在" class="headerlink" title="证明幽灵空白存在"></a>证明幽灵空白存在</h3><blockquote>
