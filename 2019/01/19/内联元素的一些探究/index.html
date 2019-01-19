@@ -130,11 +130,21 @@
 <p>如果想避免幽灵空白的干扰，将上面注释掉的代码恢复，即设置<code>inline-block</code>创建一个独立的行框盒子，就能将里面的子元素不受干扰。同时满足大值特性</p>
 <p><img src="/assets/2019-1-19/line_height-7.jpg"></p>
 <h2 id="vertical-align"><a href="#vertical-align" class="headerlink" title="vertical-align"></a>vertical-align</h2><p>说到这个属性，就要提到基线，这也是很多现象产生的原因，比如说<code>vertical-align: middle</code>其实是近似垂直居中。</p>
-<p>而这近似垂直居中又导致了很多问题的出现，比如说很常见的一个布局，一行字加上一个下拉符号</p>
+<p>而这近似垂直居中又导致了很多现象的出现，比如说很常见的一个布局，一行字加上一个下拉符号</p>
 <p><img src="/assets/2019-1-19/vertical_align-2.jpg"></p>
 <p>设置的都是20px大小，而且也使用了<code>vertical-align: middle</code>，但是最后的结果整个容器总是要大于20px，原因就和基线的定义有关了，如下图所示</p>
 <p><img src="/assets/2019-1-19/vertical_align-1.jpg"></p>
-<p>，那么基线的定义就是字母x的下边缘，middle则是指基线往上1/2的x-height的位置，可以理解为x中间的那个交点。看似没有什么问题，但实际上问题就由此产生，每个字体在行内盒子的位置是不一样的，上面也比较了微软雅黑和宋体两个字体的差异，可以明显发现微软雅黑字体会下沉，那么也就导致了middle和实际的中线位置会往下偏一点。那么这个偏一点具体偏多少由<code>font-size</code>的大小决定，越大则下沉的效果越明显。</p>
+<p>那么基线的定义就是字母x的下边缘，middle则是指基线往上1/2的x-height的位置，可以理解为x中间的那个交点。看似没有什么问题，但实际上问题就由此产生，每个字体在行内盒子的位置是不一样的，上面也比较了微软雅黑和宋体两个字体的差异，可以明显发现微软雅黑字体会下沉，那么也就导致了middle和实际的中线位置会往下偏一点。那么这个偏一点具体偏多少由<code>font-size</code>的大小决定，越大则下沉的效果越明显。所以实现真正意义上的居中是很困难的。</p>
+<h3 id="单行文本高度不等于行高现象"><a href="#单行文本高度不等于行高现象" class="headerlink" title="单行文本高度不等于行高现象"></a>单行文本高度不等于行高现象</h3><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">span</span>&gt;</span>123<span class="tag">&lt;/<span class="name">span</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>css代码如下</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">div</span> &#123;</span><br><span class="line">  <span class="attribute">background-color</span>: <span class="number">#000</span>;</span><br><span class="line">  <span class="attribute">line-height</span>: <span class="number">32px</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="selector-tag">span</span> &#123;</span><br><span class="line">  <span class="attribute">color</span>: <span class="number">#fff</span>;</span><br><span class="line">  <span class="attribute">font-size</span>: <span class="number">24px</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2019-1-19/vertical_align-3.jpg"></p>
+<p>可以看到如图中所示，高度并不为32px，出现这一现象也是由于<code>vertical-align</code>以及幽灵空白作用的结果，理解这一现象本质，有助于理解内联元素。</p>
+<p>这似乎与上面行高决定非替换元素的高度这一观点相矛盾，其实并非如此，很多现象都是很多属性共同作用的结果。这里产生的原因就是子元素设置了<code>font-size</code>属性，导致和父元素字体大小不同，而内联元素又是和基线对齐，导致错位。</p>
+<p>我们可以在span前面加上一个x作为匿名内联盒子，在span里面加上一个x作为内联盒子</p>
+<p><img src="/assets/2019-1-19/vertical_align-4.jpg"></p>
+<p>可以看到，本来匿名内联盒子的x位置好好的，但是由于内联盒子字体太大了，导致为了基线对其，而将文字上移，就把父级容器撑开了，导致高度大于32px也就是这个原因。</p>
+<p>解决方案很简单，原因是<code>font-size</code>产生的，自然可以从字体大小上改动，指定父元素的<code>font-size</code>为24px与子元素相同，就能使高度为32px</p>
 
 </article>
 
