@@ -117,10 +117,7 @@
 <ul>
 <li>box里的width和margin共同作用外部容器水平居中</li>
 <li>box里的line-height决定容器高度</li>
-<li>content里的display很关键<br>1.这里重置了外部line-height大小，不能指定为block等块级元素，需要保持内联元素特性，因为需要使用vertical-align属性<ol>
-<li>同时产生行框盒子及幽灵空白。这里需要幽灵空白被box的line-height作用，撑开外部容器。</li>
-</ol>
-</li>
+<li>content里的display很关键<br>1 这里重置了外部line-height大小，不能指定为block等块级元素，需要保持内联元素特性，因为需要使用vertical-align属性<br>2 同时产生行框盒子及幽灵空白。这里需要幽灵空白被box的line-height作用，撑开外部容器。</li>
 <li>vertical-align: middle是为了调整对其方式，默认向基线对其，需将其改成近似居中对齐</li>
 </ul>
 
