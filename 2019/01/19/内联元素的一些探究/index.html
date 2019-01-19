@@ -127,7 +127,9 @@
 <p><img src="/assets/2019-1-19/line_height-6.jpg"></p>
 <p>可以看到box容器高度都是96px，那么解释一下原因，还是由于幽灵空白，<code>span</code>元素前面可以假设把它加上一个x匿名内联元素。</p>
 <p>加入是外部设置<code>line-height</code>为96px，那么则是作用到了x这个幽灵空白上，倘若是子元素设置了<code>line-height</code>，则是作用到了子元素的行框盒子上。整体行框盒子由最大的决定，因此还是96px。</p>
-
+<p>如果想避免幽灵空白的干扰，将上面注释掉的代码恢复，即设置<code>inline-block</code>创建一个独立的行框盒子，就能将里面的子元素不受干扰。同时满足大值特性</p>
+<p><img src="/assets/2019-1-19/line_height-7.jpg"></p>
+<h2 id="vertical-align"><a href="#vertical-align" class="headerlink" title="vertical-align"></a>vertical-align</h2>
 </article>
 
 
