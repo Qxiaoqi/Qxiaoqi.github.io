@@ -145,6 +145,14 @@
 <p><img src="/assets/2019-1-19/vertical_align-4.jpg"></p>
 <p>可以看到，本来匿名内联盒子的x位置好好的，但是由于内联盒子字体太大了，导致为了基线对其，而将文字上移，就把父级容器撑开了，导致高度大于32px也就是这个原因。</p>
 <p>解决方案很简单，原因是<code>font-size</code>产生的，自然可以从字体大小上改动，指定父元素的<code>font-size</code>为24px与子元素相同，就能使高度为32px</p>
+<h3 id="图片底部留有间隙现象"><a href="#图片底部留有间隙现象" class="headerlink" title="图片底部留有间隙现象"></a>图片底部留有间隙现象</h3><p>这个现象可以说是从我刚开始学css起就遇到过了，结果之一也就不了了之了，只知如何解决，却不理解产生这种现象的原因。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"box"</span>&gt;</span></span><br><span class="line">　 <span class="tag">&lt;<span class="name">img</span> <span class="attr">src</span>=<span class="string">"1.png"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>css代码如下</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.box</span> &#123;</span><br><span class="line">  <span class="attribute">width</span>: <span class="number">280px</span>;</span><br><span class="line">  <span class="attribute">outline</span>: <span class="number">1px</span> solid <span class="number">#aaa</span>;</span><br><span class="line">  <span class="attribute">text-align</span>: center;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="selector-class">.box</span> &gt; <span class="selector-tag">img</span> &#123;</span><br><span class="line">  <span class="attribute">height</span>: <span class="number">96px</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2019-1-19/vertical_align-5.jpg"></p>
+<p>可以看到，按照代码来看，应该是容器被图片撑开，然后是96px才对，然而实际确实100px，产生间隙的原因很多情况下都是<code>line-height</code>，<code>vertical-align</code>，<code>幽灵空白</code>造成的，此处也不例外</p>
+<p>这里和前面一样加上x，并添加上背景色辅助观察。可以很明显地看到产生间隙的原因，内联元素中，图片的基线按照下边缘来决定。</p>
+<p>因此，图片下边缘和x下边缘对齐，那么下边的间隙就是半行距，没错，间隙就是半行距撑开的。既然知道了产生的原因，那么解决起来就很简单了，消除半行距即可。比如让父元素line-height足够小，另行距为0或者是负值，即可解决。当然，也可以直接消除幽灵空白，将图片块状化，幽灵空白就消失了。或者改变对齐方式也可以解决。</p>
 
 </article>
 
