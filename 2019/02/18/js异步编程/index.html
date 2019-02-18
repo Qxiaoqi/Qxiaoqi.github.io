@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">js异步编程</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>文中将简单整理一下js异步编程的方法。关于js异步编程，早期很容易出现回调地狱这一现象，也出现了一些相应的解决办法，从<code>Promise</code>到<code>Generator</code>再到<code>async/await</code>,解决了回调地狱这一问题，当然本文只是浅显的举出一些实例，以及个人简单的理解。</p>
+<p>异步编程这一块确实还有很多可以继续深入的地方。</p>
+<h2 id="异步编程方法"><a href="#异步编程方法" class="headerlink" title="异步编程方法"></a>异步编程方法</h2><ul>
+<li>回调函数</li>
+<li>事件监听</li>
+<li>Promise对象</li>
+<li>Generator函数</li>
+<li>Generator的语法糖async/await</li>
+</ul>
+<p>文中将着重放在<code>Promise</code>，<code>Generator函数</code>，<code>async/await</code>这三个方面进行举例</p>
+<h2 id="回调地狱产生"><a href="#回调地狱产生" class="headerlink" title="回调地狱产生"></a>回调地狱产生</h2><p>这里首先使用node随便写三个接口测试，具体代码就不贴了，两个Get请求，一个Post请求。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$.get(url + <span class="string">"/first"</span>, <span class="function"><span class="keyword">function</span>(<span class="params">resFirst</span>) </span>&#123;</span><br><span class="line">  <span class="built_in">console</span>.log(resFirst);</span><br><span class="line">  $.get(url + <span class="string">"/second"</span>, <span class="function"><span class="keyword">function</span>(<span class="params">resSecond</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(resSecond);</span><br><span class="line">    $.post(url + <span class="string">"/login"</span>, userData, <span class="function"><span class="keyword">function</span>(<span class="params">res</span>) </span>&#123;</span><br><span class="line">      <span class="built_in">console</span>.log(res);</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p><img src="/assets/2019-2-18/img1.jpg"></p>
+<p>可以看到上面代码就是一个简单的回调地狱，每一个请求都是外层请求的回调。那么有什么问题呢？最明显的一点就是，代码可读性差，就像洋葱一样一层包裹着一层，改动一处，其余地方也要改动，可维护性也不好。</p>
+<p>当然回调地狱不止是这么一个问题，还有一个问题就是异常处理上的问题，即在回调中出现的异常无法被捕获，举个例子</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">throwError</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="comment">// console.log("throw");</span></span><br><span class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">'ERROR'</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  setTimeout(throwError, <span class="number">3000</span>);</span><br><span class="line">  <span class="comment">// throwError();</span></span><br><span class="line">&#125; <span class="keyword">catch</span>(e)&#123;</span><br><span class="line">  alert(e);<span class="comment">//这里的异常无法捕获</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面代码运行后并不会弹出窗口，也就是无法被捕获到，那么类比到最开始举的三个请求的例子，我们不能直接在三个请求整体的外面写try/catch，因为这样无法捕获，而需要在每个回调内部写才能捕获到，如下</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">$.get(url + <span class="string">"/first"</span>, <span class="function"><span class="keyword">function</span>(<span class="params">resFirst</span>) </span>&#123;</span><br><span class="line">  <span class="built_in">console</span>.log(resFirst);</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    throwError();</span><br><span class="line">  &#125; <span class="keyword">catch</span>(e) &#123;</span><br><span class="line">    alert(e);</span><br><span class="line">  &#125;</span><br><span class="line">  $.get(url + <span class="string">"/second"</span>, <span class="function"><span class="keyword">function</span>(<span class="params">resSecond</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(resSecond);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      throwError();</span><br><span class="line">    &#125; <span class="keyword">catch</span>(e) &#123;</span><br><span class="line">      alert(e);</span><br><span class="line">    &#125;</span><br><span class="line">    $.post(url + <span class="string">"/login"</span>, userData, <span class="function"><span class="keyword">function</span>(<span class="params">res</span>) </span>&#123;</span><br><span class="line">      <span class="built_in">console</span>.log(res);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        throwError();</span><br><span class="line">      &#125; <span class="keyword">catch</span>(e) &#123;</span><br><span class="line">        alert(e);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>这样代码的弊端非常明显，代码量不仅大，而且异常非常不方便处理，那么下面就将使用Promise改写该段代码，解决上述问题。</p>
+<h2 id="Promise改写"><a href="#Promise改写" class="headerlink" title="Promise改写"></a>Promise改写</h2>
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
