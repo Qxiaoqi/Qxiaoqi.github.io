@@ -108,7 +108,9 @@
 <p>这里后端传我的是二进制流，虽然之前写的项目也是这样处理的，但是一个是当时没有认真研究，而且当时没有使用axios，导致这次也卡了一小段时间。</p>
 <p>然后就是Blob对象，Blob 对象表示一个不可变、原始数据的类文件对象。这里创建了一个文本节点，并隐藏，触发点击事件，触发下载。而且需要把api封装的接口设置<code>responseType: &quot;blob&quot;</code>。</p>
 <p>这里获取的是excel文件，后端通过<code>Content-Disposition</code>把文件名返回给我，这里其实有一个问题。虽然从network里面分析到了该请求头，但是axios并没有拦截到该请求头，这里需要后端设置<code>Access-Control-Expose-Headers</code>才能获取到该请求头。</p>
-<p>但是目前有一个问题还没有解决，那就是后端直接返回我的是<code>data: Blob()</code>，似乎是不能再多返回一个code状态码？没有状态码的话，我前面axios的拦截就不能统一根据返回的code来采取不同的处理。这里暂时没有解决，后面需要尝试写一下后端研究一下。</p>
+<p>但是目前有一个问题还没有解决，那就是后端直接返回我的是<code>data: Blob()</code>，似乎是不能再多返回一个code状态码？没有状态码的话，我前面axios的拦截就不能统一根据返回的code来采取不同的处理。<del>这里暂时没有解决，后面需要尝试写一下后端研究一下。</del></p>
+<p>解决方案：直接判断返回类型，如果返回的是Blob型，直接另一套操作</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (res.data &amp;&amp; !(res.data <span class="keyword">instanceof</span> Blob) &amp;&amp; !(res.data.code === <span class="number">200</span>))</span><br></pre></td></tr></table></figure>
 <p>（……未完待续，项目还没写完，有时间再整理）</p>
 
 </article>
