@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">记一次项目的优化</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>性能很重要，所以优化一直是一个很大的话题。而且根据项目和需求的不同，优化的策略也不同。项目优化之前做的一直不多，这次着手准备优化一下之前写的一个项目。</p>
+<h2 id="字体渲染优化"><a href="#字体渲染优化" class="headerlink" title="字体渲染优化"></a>字体渲染优化</h2><h3 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h3><p>先贴一张最开始的分析图</p>
+<p><img src="/assets/2018-3-12/origin.jpg"></p>
+<p>首先分析优化的方向，打开Network分析一下资源的加载情况，可以非常明显的看到字体加载上花了很长时间，平均加载8s，甚至更久。也因此在用户没有缓存的情况下，由于字体没有加载出来，而导致字体出现时间比其它DOM出现时间晚的多，而且首屏加载所等待的时间较长。因此，首先优化字体的渲染势在必行。</p>
+<h3 id="方案"><a href="#方案" class="headerlink" title="方案"></a>方案</h3><p>分析出来首要优化目标之后，就是针对情况进行优化。其中我发现了一个现象，按道理讲字体渲染出来应该是在字体文件加载完毕之后才会出现。但是实际情况并非如此，而是大致在其它DOM出现后的近4s时就已经出现了。</p>
+<p>由于首页（登录页）字体比较少，我并未发现此时渲染出来的字体和下载字体的区别。直到偶然看一些字体优化策略的文章之后才发现，浏览器实行的是FOUT和FOIT策略（文章上讲IE和Edge实行FOUT策略，其它实行FOIT策略），但我经过测试Chrome下并非完全的FOIT策略，而是采取FOUT和FOIT折中的策略。即3s内如果字体加载出来，那么加载出来之前隐藏文本，如果3s内没有加载出来，那么则显示降级字体。</p>
+<p>那么此时了解了浏览器对字体渲染的策略之后，就可以下手了。项目里引入了fontfaceobserver，一个字体加载器。可在字体加载完后，执行编写的js。</p>
+<p>我们几乎可以确定，在无缓存情况下，3s内Chrome下字体文件加载不出来（Chrome需要近7s，而Firefox仅需2s多）。即使能加载出来，也需要一定时间，和其它DOM显示有一定时间间隔。那么如何让他们同时渲染出来？中间也考虑了几种方案</p>
+<ul>
+<li>方案一：登录页默认使用安全字体，0.5s内如果能加载出来下载字体，则使用下载字体，否则登陆页就使用安全字体。</li>
+</ul>
+<p>该方案其实就是FOIT策略的变形，不过不同之处是加载不出来就不换了（因为登录页就没几个字，字体切换如果不细看的话几乎看出来。）但是并不是FOIT策略，因为使用FOIT策略的话，字体切换虽然不细看看不出来，但是假如用户在填写账号密码的时候字体发生了切换，那么这个时候是非常明显的，几乎可以很明显的察觉到字体抖动，体验非常不好。因此我将时间点缩到了0.5s（如果有字体缓存，那么还是可以直接使用下载字体）。</p>
+<p>这个方案虽然比较合适，但是这个方案也有缺点，大部分情况下（用户进入时是有字体缓存的），那么登陆页在0.5s时会发生一个轻微的字体抖动，虽然在不知情的情况下几乎察觉不出来，但在我看来仍不是一个最佳方案。</p>
+<ul>
+<li>方案二：登录页默认使用下载字体，如果0.5s内不能加载出来，那么则使用降级安全字体。</li>
+</ul>
+<p>该方案是方案一的另一种思路，也就是FOUT的变形，不同之处是将3s缩减到了0.5s，经过多次测试之后，缩减到了0.1s，0.1s在有缓存的情况下足以加载出来（再小的话有缓存也加载不出来）。该方案可以说D字体和其它DOM同时出现，可以说是体验非常好了。而且等用户将登录信息填写完整之后，字体已经加载好了，进入内容页直接就是下载字体。</p>
+<h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><p>同时在这一阶段，将ttf字体转成了woff2和woff，直接缩小了一半多。同时也将图片进行了压缩，同样压缩了一半多。同时服务端又开启了gzip将js和css文件进一步压缩，加载速度又提升了一截。中间也用了uglifyjs试图进一步压缩js，但是效果并不明显，应该是编译之后已经压缩过一次的缘故。</p>
+<p>贴一下第一阶段优化之后的加载情况</p>
+<p><img src="/assets/2018-3-12/optimization-1.jpg"></p>
+<p>可以看到，提升了很多，几乎可以说是天壤之别。但其实除了字体渲染策略上考虑了一番以外，别的对资源的压缩之类的并没有花很多功夫，但是提升确实是很显著的。因此静态资源的压缩确实是对优化项目有很大的提高。</p>
+<p>（正在进行其它优化，未完待续。。。。。。。。）</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="/js/jquery-3.2.1.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
