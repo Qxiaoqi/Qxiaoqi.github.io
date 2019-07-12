@@ -74,21 +74,13 @@
 </ul>
 <p>首先merge便于理解，merge会把两分支的最新快照以及二者共同祖先进行三方合并，结果是产生一个新的快照。</p>
 <p>而rebase命令能将提交到某一分支上的所有修改都移至另一分支上，其最直接的结果就是能确保在向远程分支推送时，能保持提交历史的整洁，即使用<code>git log --graph</code>查看分支提交历史时，是一条直线，更加简洁。</p>
-<h3 id="相关命令整理"><a href="#相关命令整理" class="headerlink" title="相关命令整理"></a>相关命令整理</h3><ol>
-<li>提交文件到git仓库</li>
-</ol>
+<h3 id="相关命令整理"><a href="#相关命令整理" class="headerlink" title="相关命令整理"></a>相关命令整理</h3><p><b>提交文件到git仓库</b></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git add &lt;file&gt;  <span class="comment">#将工作区文件提交到暂存区</span></span><br><span class="line">git commit -m &lt;message&gt; <span class="comment">#将暂存区提交到分支</span></span><br></pre></td></tr></table></figure>
-<ol>
-<li>远程仓库</li>
-</ol>
+<p><b>远程仓库</b></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git remote  <span class="comment">#查看远程仓库信息</span></span><br><span class="line">git remote -v <span class="comment">#查看更加详细的远程仓库信息</span></span><br><span class="line">git push orgin &lt;分支&gt;   <span class="comment">#推送到远程仓库分支</span></span><br></pre></td></tr></table></figure>
-<ol>
-<li>分支相关</li>
-</ol>
+<p><b>分支相关</b></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git branch  <span class="comment">#查看分支</span></span><br><span class="line">git branch &lt;name&gt;   <span class="comment">#创建分支</span></span><br><span class="line">git checkout &lt;name&gt; <span class="comment">#切换分支</span></span><br><span class="line">git checkout -b &lt;name&gt;  <span class="comment">#创建+切换分支</span></span><br><span class="line">git merge &lt;name&gt;    <span class="comment">#将目标分支合并到当前分支</span></span><br><span class="line">git branch -d &lt;name&gt;    <span class="comment">#删除目标分支</span></span><br><span class="line"></span><br><span class="line">git rebase &lt;name&gt;</span><br></pre></td></tr></table></figure>
-<ol>
-<li>解决冲突</li>
-</ol>
+<p><b>解决冲突</b></p>
 <p>当提交到远程仓库时，目标与当前不一致（即可能别人在这条分支上提交后），就会产生冲突。需要先在本地把冲突解决，然后提交。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git pull    <span class="comment">#将最新的提交从orgin分支上抓取下来</span></span><br><span class="line">git branch --<span class="built_in">set</span>-upstream-to &lt;branch-name&gt; origin/&lt;branch-name&gt; <span class="comment">#本地分支与远程分支链接</span></span><br><span class="line"><span class="comment"># 然后在本地合并，然后git add，git commit 提交</span></span><br></pre></td></tr></table></figure>
 </article>
