@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">git分支相关</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>git分支在多人协作开发里非常重要，之前没有这方面的需求，所以对这方面了解不多。公司实习多人协作开发，需要这部分的掌握，就重新整理了一下。</p>
+<h2 id="git分支"><a href="#git分支" class="headerlink" title="git分支"></a>git分支</h2><p>一般远程仓库有多个分支，master为主分支，应该是非常稳定的，也就是仅用来发布新版本，一般开发都在其它分支进行，当稳定后合并到master分支下，如果出现问题，及时回滚。</p>
+<p>多人协作中，每个人都在dev分支上提交，每个人都应该创建自己的分支，然后往dev分支上合并。</p>
+<h3 id="实际开发"><a href="#实际开发" class="headerlink" title="实际开发"></a>实际开发</h3><p>假设，远程仓库有master分支和dev分支，当我们<code>git clone</code>后，将分支切换到dev分支，然后进行开发，当然此处也可以再新加一个分支，当该功能做完后，再合并到dev分支，最后没问题的情况下合并到master分支。其它修bug或者新增一个功能的时候，也都可以新增一个分支，完成后合并，最后将分支删除。（当然，此处说的可能和实际开发还会有些出入，因为还没有真正在公司开发中尝试。如果后面有别的理解后，会再做做修改）。</p>
+<h3 id="分支合并"><a href="#分支合并" class="headerlink" title="分支合并"></a>分支合并</h3><p>两种方式：</p>
+<ul>
+<li>merge</li>
+<li>rebase</li>
+</ul>
+<p>首先merge便于理解，merge会把两分支的最新快照以及二者共同祖先进行三方合并，结果是产生一个新的快照。</p>
+<p>而rebase命令能将提交到某一分支上的所有修改都移至另一分支上，其最直接的结果就是能确保在向远程分支推送时，能保持提交历史的整洁，即使用<code>git log --graph</code>查看分支提交历史时，是一条直线，更加简洁。</p>
+<h3 id="相关命令整理"><a href="#相关命令整理" class="headerlink" title="相关命令整理"></a>相关命令整理</h3><ol>
+<li>提交文件到git仓库</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git add &lt;file&gt;  <span class="comment">#将工作区文件提交到暂存区</span></span><br><span class="line">git commit -m &lt;message&gt; <span class="comment">#将暂存区提交到分支</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li>远程仓库</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git remote  <span class="comment">#查看远程仓库信息</span></span><br><span class="line">git remote -v <span class="comment">#查看更加详细的远程仓库信息</span></span><br><span class="line">git push orgin &lt;分支&gt;   <span class="comment">#推送到远程仓库分支</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li>分支相关</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git branch  <span class="comment">#查看分支</span></span><br><span class="line">git branch &lt;name&gt;   <span class="comment">#创建分支</span></span><br><span class="line">git checkout &lt;name&gt; <span class="comment">#切换分支</span></span><br><span class="line">git checkout -b &lt;name&gt;  <span class="comment">#创建+切换分支</span></span><br><span class="line">git merge &lt;name&gt;    <span class="comment">#将目标分支合并到当前分支</span></span><br><span class="line">git branch -d &lt;name&gt;    <span class="comment">#删除目标分支</span></span><br><span class="line"></span><br><span class="line">git rebase &lt;name&gt;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>解决冲突</li>
+</ol>
+<p>当提交到远程仓库时，目标与当前不一致（即可能别人在这条分支上提交后），就会产生冲突。需要先在本地把冲突解决，然后提交。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git pull    <span class="comment">#将最新的提交从orgin分支上抓取下来</span></span><br><span class="line">git branch --<span class="built_in">set</span>-upstream-to &lt;branch-name&gt; origin/&lt;branch-name&gt; <span class="comment">#本地分支与远程分支链接</span></span><br><span class="line"><span class="comment"># 然后在本地合并，然后git add，git commit 提交</span></span><br></pre></td></tr></table></figure>
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
