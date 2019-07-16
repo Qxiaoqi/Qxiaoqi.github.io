@@ -91,7 +91,19 @@
 <p>自动把模块和版本号添加到<code>devdependencies</code>部分。</p>
 <p>那么<code>dependencies</code>和<code>devdependencies</code>有什么区别呢？</p>
 <p>前者是项目运行时的依赖模块，后者则是项目开发时的模块。那么什么意思呢？项目运行意思就是在实际运行时候依赖的模块，而开发时候依赖的模块可以理解为开发时候依赖的模块，<strong>开发时候依赖的模块实际运行时未必需要</strong>。举个例子，比如说我使用less来写样式，最后编译成css，那么less就是我在开发时候依赖的模块，但是实际运行时侯并不需要less模块。</p>
-
+<p>———————2019.7.17—————–</p>
+<h2 id="npm发布相关"><a href="#npm发布相关" class="headerlink" title="npm发布相关"></a>npm发布相关</h2><p>这个发布真的是花了不少时间。依次整理一下遇到的问题。</p>
+<h3 id="1-2FA验证问题"><a href="#1-2FA验证问题" class="headerlink" title="1. 2FA验证问题"></a>1. 2FA验证问题</h3><p>双重验证有三个模式，分别是只在登陆删除package的时候需要验证（较严格），还有发布等等时候也要验证（最严格），以及最后的无需验证。<a href="https://cloud.tencent.com/developer/section/1490246" target="_blank" rel="noopener">如何使用双因素身份验证</a></p>
+<p>这里需要手机装个App，不过需要Google服务，最后手机直接下了个谷歌空间了事。</p>
+<h3 id="2-发布仓库地址"><a href="#2-发布仓库地址" class="headerlink" title="2. 发布仓库地址"></a>2. 发布仓库地址</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm config <span class="built_in">set</span> registry http://registry.npmjs.org</span><br></pre></td></tr></table></figure>
+<p>后面可以根据需要自行改动，不过nrm可以管理npm仓库地址</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">nrm     <span class="comment">#展示nrm可用命令</span></span><br><span class="line">nrm ls  <span class="comment">#列出已经配置的所有仓库</span></span><br><span class="line">nrm <span class="built_in">test</span>  <span class="comment">#测试所有仓库的响应时间</span></span><br><span class="line">nrm add &lt;registry&gt; &lt;url&gt; <span class="comment">#新增仓库</span></span><br><span class="line">nrm use &lt;registry&gt; <span class="comment">#切换仓库</span></span><br></pre></td></tr></table></figure>
+<h3 id="3-publish-Failed-PUT-401"><a href="#3-publish-Failed-PUT-401" class="headerlink" title="3. publish Failed PUT 401"></a>3. publish Failed PUT 401</h3><p>发布的是已经存在的包，且不是发布者，就会报这个错，解决方法：加作用域。</p>
+<p>即在package.json文件的name前面加上<code>@用户名/</code>，也可以使用命令行</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm init --scope=@qxiaoqi -y</span><br></pre></td></tr></table></figure>
+<p>注意这里一定要是自己的用户名，不正确的话，会报403错误。</p>
+<h3 id="4-publish-Failed-PUT-402"><a href="#4-publish-Failed-PUT-402" class="headerlink" title="4. publish Failed PUT 402"></a>4. publish Failed PUT 402</h3><p>npm默认是私有发布，需要收费。公共发布命令行</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm publish --access public</span><br></pre></td></tr></table></figure>
 </article>
 
 
