@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">vue-cli源码学习(一)</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>说起vue-cli源码的阅读，主要源于公司实习时候，对公司的前端脚手架比较感兴趣，然后就开始看了看，但是看的不是很明白。就准备先看看比较熟悉的vue-cli，而且vue-cli使用人数比较多，也有一些源码分析的文章，有助于代码的理解。</p>
+<p>但其实看一遍别人的文章，感觉只是稍微明白了一点。于是，本着学习cli工具的开发思路，因此，从master分支的第一个提交开始看起，准备梳理一下整个cli工具的开发流程，以及作者的一些思考。</p>
+<p>这篇文章将主要分析<code>vue-cli 1.x</code>版本的一些原理。</p>
+<a id="more"></a>
+<h2 id="整体思路"><a href="#整体思路" class="headerlink" title="整体思路"></a>整体思路</h2><ul>
+<li>bin/  目录下面放命令文件，比如<code>vue</code>，<code>vue-init</code>，<code>vue-list</code>，注意这里没有加js后缀</li>
+<li>lib/  目录下面放一些公共的方法</li>
+</ul>
+<p>其实vue-cli最初只提供了两种命令，分别是<code>vue init</code>初始化项目，以及<code>vue list</code>查看模板列表。命令行的控制则主要是引入<code>commander</code>包来控制。这里选项交互暂时没用到<code>inquirer</code>包，后面版本会用到。</p>
+<p>bin目录写到package.json文件中作用是可直接命令行启动，即<code>npm i -g</code>后可直接使用<code>vue init &lt;package-name&gt; &lt;project-name&gt;</code>形式。</p>
+<p>同时，为了方便调试，可以直接在目录下面<code>npm link</code>到全局，这样改动后可以直接看到效果。原理即创建软连接，使用<code>npm unlink</code>即可取消。</p>
+<h3 id="脚本文件调用"><a href="#脚本文件调用" class="headerlink" title="脚本文件调用"></a>脚本文件调用</h3><p>主文件vue如何根据用户输入选择执行不同脚本文件？</p>
+<p>最开始使用<code>child_process.spawn(脚本路径，参数)</code>直接执行，如下</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这里执行子进程，根据命令行输入，执行不同bin下文件</span></span><br><span class="line"><span class="comment">// 注意这里有一个执行权限问题，chmod 755 file</span></span><br><span class="line"><span class="comment">// 但是不太清楚如果发布以后，npm下载之后，是否可执行，如果权限是不可执行，那其它用户下载后又该如何解决？已解决，用commander特性</span></span><br><span class="line">spawn(bin, args, &#123; <span class="attr">stdio</span>: <span class="string">'inherit'</span> &#125;)</span><br><span class="line">  .on(<span class="string">'close'</span>, process.exit.bind(process))</span><br></pre></td></tr></table></figure>
+<p>后来的提交直接使用了commander特性，如下所示，command加入第二个参数，就可以在目录下面寻找vue-init与vue-list文件执行，省了一大段调用nodeAPI获取输入参数，选择脚本路径与参数的代码。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">require</span>(<span class="string">'commander'</span>)</span><br><span class="line">  .version(<span class="built_in">require</span>(<span class="string">'../package'</span>).version)</span><br><span class="line">  .usage(<span class="string">'&lt;command&gt; [options]'</span>)</span><br><span class="line">  .command(<span class="string">'init'</span>, <span class="string">'generate a new project from a template'</span>)</span><br><span class="line">  .command(<span class="string">'list'</span>, <span class="string">'list available official templates'</span>)</span><br><span class="line">  .parse(process.argv)</span><br></pre></td></tr></table></figure>
+<h3 id="vue-init"><a href="#vue-init" class="headerlink" title="vue init"></a>vue init</h3><p><code>vue init</code>的思路很简单，就是预先写好一个模板，放到远程仓库中。然后当使用<code>vue init</code>选择不同模板构建时，则下载不同的模板。暂时不清楚为什么会先将模板下载到<code>/tmp</code>下，然后再将其<code>generate</code>到项目位置，而不是直接将其下载到目标位置。</p>
+<p>一些预设选项是通过下载下来的模板中<code>meta.json</code>中的选项来交互。版本目前暂时还不能<code>init</code>成功，据我推测是代码比较老，和template不太匹配的缘故。比较有意思的是作者最初使用的<code>Khaos</code>包来<code>generate</code>到目标位置，可能作者觉得这个太麻烦了，重新封装了一下这个包叫<code>khaos-patched</code>，一行代码就能实现功能。也有些借鉴意义。</p>
+<p>这里有一个用法比较独特（之前没见过）</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 举例：如果返回-1，则 ~-1 为 0， 也就是说没有找到，即为false，加上！，即为 true，既没有找到就进入</span></span><br><span class="line"><span class="comment">// 如果返回其他值，则 ~number为 非0，即找到true，加上！即为false</span></span><br><span class="line"><span class="keyword">if</span> (!~template.indexOf(<span class="string">'/'</span>)) &#123;</span><br><span class="line">  template = <span class="string">'vuejs-templates/'</span> + template</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>算的上奇淫巧技吧，但是有意思的事，作者在后面的版本中修改了，变成了如下，可能是觉得可读性不太好？</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> hasSlash = template.indexOf(<span class="string">'/'</span>) &gt; <span class="number">-1</span></span><br><span class="line"><span class="keyword">if</span> (!hasSlash) &#123;</span><br><span class="line">  template = <span class="string">'vuejs-templates/'</span> + template</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="vue-list"><a href="#vue-list" class="headerlink" title="vue list"></a>vue list</h3><p>vue list实现思路很简单，直接发请求获取一些模板列表，显示出来。这里就不多做解释了。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>当然，目前只是看了最初的几次提交，1.x版本还有好多次提交，代码结构比较简单，后面会愈发复杂。同时上述原理只是1.x的前期版本，不包括2.x以及3.x版本。特别是3.x有了较大的改进。</p>
+<p>（未完待续。。。。）</p>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
