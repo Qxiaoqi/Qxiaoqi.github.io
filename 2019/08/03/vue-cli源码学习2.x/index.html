@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Xiaoqi&#39;s blog</title>
+<!--   <link href="https://fonts.googleapis.com/css?family=Gloria+Hallelujah" rel="stylesheet"> -->
+  <!-- theme为主题的config.yml -->
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="/css/Graffiti.css">
+    
+  
+</head>
+<body>
+
+<!-- 导航栏 -->
+<!-- 导航栏部分 -->
+<div id="navigationBar-bg" class="navigationBar-bg" style="background: url('/img/navigationBar.jpg') no-repeat;">
+  <div id="navigationBar-content" class="navigationBar-content">
+    <div class="personal-block">
+      <div class="portrait">
+        <div class="portrait-background">
+          <div class="portrait-img" style="background: url('/img/portrait.jpg') no-repeat; background-size: 100%"></div>
+        </div>
+      </div>
+      <div class="nickname"><span>Xiaoqi&#39;s blog</span></div>
+    </div>
+
+    <div class="navigationBar-menu">
+      
+        <li>
+          <div class="menu-hover Home-hover"></div>
+          <a id="Home" href="/">Home</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Archives-hover"></div>
+          <a id="Archives" href="/archives">Archives</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Tags-hover"></div>
+          <a id="Tags" href="/tags">Tags</a>
+        </li>
+      
+        <li>
+          <div class="menu-hover Github-hover"></div>
+          <a id="Github" href="https://github.com/Qxiaoqi">Github</a>
+        </li>
+      
+    </div>
+  </div>
+</div>
+
+<!-- layout渲染部分 -->
+<div id="content-outer" class="content-outer">
+  <div class="content-margin">
+    <div id="content-inner" class="content-inner">
+      
+<article id="post" class="post">
+	<div class="post-title">
+  		<span class="post-title-link">vue-cli源码学习2.x</span>
+	</div>
+  <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>vue-cli的2.9.6版本看完之后，对cli脚手架的整个原理才有了一个比较清晰的认识，有时间可以自己写一个脚手架了。</p>
+<a id="more"></a>
+<h2 id="流程介绍"><a href="#流程介绍" class="headerlink" title="流程介绍"></a>流程介绍</h2><ul>
+<li><p>vue文件开始，根据输入vue init/list 执行不同文件</p>
+<ul>
+<li><p>选择vue init，进入执行 vue-init </p>
+</li>
+<li><p>根据isLocalPath()判断是 本地模板 还是 官方模板</p>
+<ul>
+<li><p>如果是当前路径的template，则调用getTemplatePath()确保其是绝对路径，并进入 generate()</p>
+</li>
+<li><p>如果是官方模板，则需要检查版本（向远程发送请求，获取cli当前latest的版本和本地安装的版本）</p>
+</li>
+<li>根据选择获取 模板路径，生成路径，项目名，进入 downloadAndGenerate()，然后download()之后进入generate()</li>
+</ul>
+</li>
+<li><p>进入generate() 首先通过getOptions()获取模板下meta.js/meta.json的配置（其中包含了不同模板的提问），getOptions()里面设置项目名，以及设置包名验证，然后调用getGitUser()获取git配置的用户名，然后设置作者</p>
+</li>
+<li><p>然后使用Metalsmith，先调用meta.js的metalsmith.before的方法，其目的是合并一些参数，比如合并isNotTest，然后在test测试的时候，跳过问答部分</p>
+</li>
+<li><p>metalsmith可传入插件（函数）产生结果，其实和gulp的pipe管道很像</p>
+<ul>
+<li><p>先调用 askQuestions() 获取模板中meta.js中的prompt数据，使用inquirer包来控制问答交互，并将用户输入答案存入metalsmith.metadata()全局变量中，以便后面使用</p>
+</li>
+<li><p>然后调用 filterFiles() 获取模板中meta.js中的filters数据，然后根据上一步用户输入，来删去模板中用户不需要的文件。其实现方式是：遍历模板filters，然后内层遍历所有模板文件，如果符合某条件，则将该文件删去</p>
+</li>
+<li><p>调用 renderTemplateFiles() 跳过一些文件生成以及根据Handlebars.registerHelper的定义，替换模板中的部分，使其内容可配置。其中实现方法是：使用handlebars，模板渲染的时候将其中的部分替换，首先定义一些条件，然后在模板相应位置写条件（和ejs模板渲染引擎比较像），然后根据一些选项来控制具体内容是否需要，最后生成最终文件</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>vue list的实现则和vue 1.x版本相同，向远程仓库发起请求，获取对应模板列表，然后输出出来</p>
+</li>
+</ul>
+
+</article>
+
+
+
+    </div>
+
+    <!-- footer部分 -->
+    <!-- footer部分 -->
+<div id="footer-outer" class="footer-outer">
+  <div id="footer-inner" class="footer-inner">
+    <span class="footer-left">© Xiaoqi </span>
+    <span class="footer-right">Hexo Theme Graffiti by Xiaoqi</span>
+  </div>
+</div>  
+  </div>
+
+</div>
+
+
+
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  
+    <script src="/js/graffiti.js"></script>
+  
+
+
+</body>
+</html>
