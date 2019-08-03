@@ -60,7 +60,7 @@
       
 <article id="post" class="post">
 	<div class="post-title">
-  		<span class="post-title-link">vue-cli源码学习(一)</span>
+  		<span class="post-title-link">vue-cli源码学习1.x</span>
 	</div>
   <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>说起vue-cli源码的阅读，主要源于公司实习时候，对公司的前端脚手架比较感兴趣，然后就开始看了看，但是看的不是很明白。就准备先看看比较熟悉的vue-cli，而且vue-cli使用人数比较多，也有一些源码分析的文章，有助于代码的理解。</p>
 <p>但其实看一遍别人的文章，感觉只是稍微明白了一点。于是，本着学习cli工具的开发思路，因此，从master分支的第一个提交开始看起，准备梳理一下整个cli工具的开发流程，以及作者的一些思考。</p>
@@ -78,15 +78,60 @@
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这里执行子进程，根据命令行输入，执行不同bin下文件</span></span><br><span class="line"><span class="comment">// 注意这里有一个执行权限问题，chmod 755 file</span></span><br><span class="line"><span class="comment">// 但是不太清楚如果发布以后，npm下载之后，是否可执行，如果权限是不可执行，那其它用户下载后又该如何解决？已解决，用commander特性</span></span><br><span class="line">spawn(bin, args, &#123; <span class="attr">stdio</span>: <span class="string">'inherit'</span> &#125;)</span><br><span class="line">  .on(<span class="string">'close'</span>, process.exit.bind(process))</span><br></pre></td></tr></table></figure>
 <p>后来的提交直接使用了commander特性，如下所示，command加入第二个参数，就可以在目录下面寻找vue-init与vue-list文件执行，省了一大段调用nodeAPI获取输入参数，选择脚本路径与参数的代码。</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">require</span>(<span class="string">'commander'</span>)</span><br><span class="line">  .version(<span class="built_in">require</span>(<span class="string">'../package'</span>).version)</span><br><span class="line">  .usage(<span class="string">'&lt;command&gt; [options]'</span>)</span><br><span class="line">  .command(<span class="string">'init'</span>, <span class="string">'generate a new project from a template'</span>)</span><br><span class="line">  .command(<span class="string">'list'</span>, <span class="string">'list available official templates'</span>)</span><br><span class="line">  .parse(process.argv)</span><br></pre></td></tr></table></figure>
-<h3 id="vue-init"><a href="#vue-init" class="headerlink" title="vue init"></a>vue init</h3><p><code>vue init</code>的思路很简单，就是预先写好一个模板，放到远程仓库中。然后当使用<code>vue init</code>选择不同模板构建时，则下载不同的模板。暂时不清楚为什么会先将模板下载到<code>/tmp</code>下，然后再将其<code>generate</code>到项目位置，而不是直接将其下载到目标位置。</p>
+<h3 id="vue-init"><a href="#vue-init" class="headerlink" title="vue init"></a>vue init</h3><p><code>vue init</code>的思路很简单，就是预先写好一个模板，放到远程仓库中。然后当使用<code>vue init</code>选择不同模板构建时，则下载不同的模板。先将模板下载到<code>/tmp</code>下，然后再将其<code>generate</code>到项目位置，而不是直接将其下载到目标位置。</p>
 <p>一些预设选项是通过下载下来的模板中<code>meta.json</code>中的选项来交互。版本目前暂时还不能<code>init</code>成功，据我推测是代码比较老，和template不太匹配的缘故。比较有意思的是作者最初使用的<code>Khaos</code>包来<code>generate</code>到目标位置，可能作者觉得这个太麻烦了，重新封装了一下这个包叫<code>khaos-patched</code>，一行代码就能实现功能。也有些借鉴意义。</p>
 <p>这里有一个用法比较独特（之前没见过）</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 举例：如果返回-1，则 ~-1 为 0， 也就是说没有找到，即为false，加上！，即为 true，既没有找到就进入</span></span><br><span class="line"><span class="comment">// 如果返回其他值，则 ~number为 非0，即找到true，加上！即为false</span></span><br><span class="line"><span class="keyword">if</span> (!~template.indexOf(<span class="string">'/'</span>)) &#123;</span><br><span class="line">  template = <span class="string">'vuejs-templates/'</span> + template</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>算的上奇淫巧技吧，但是有意思的事，作者在后面的版本中修改了，变成了如下，可能是觉得可读性不太好？</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> hasSlash = template.indexOf(<span class="string">'/'</span>) &gt; <span class="number">-1</span></span><br><span class="line"><span class="keyword">if</span> (!hasSlash) &#123;</span><br><span class="line">  template = <span class="string">'vuejs-templates/'</span> + template</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h3 id="vue-list"><a href="#vue-list" class="headerlink" title="vue list"></a>vue list</h3><p>vue list实现思路很简单，直接发请求获取一些模板列表，显示出来。这里就不多做解释了。</p>
+<h2 id="更新情况"><a href="#更新情况" class="headerlink" title="更新情况"></a>更新情况</h2><h3 id="2-0-x"><a href="#2-0-x" class="headerlink" title="2.0.x"></a>2.0.x</h3><h4 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h4><h4 id="完成功能"><a href="#完成功能" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>使用 inquirer 和 metalsmith 代替 Khaos 和 prompt-for</li>
+<li>添加lint和test,以及重构项目,将Metalsmith所用插件方法单独抽离,放进lib</li>
+<li>使用ora代替lib/spinner.js</li>
+<li>添加vue-cli版本检查</li>
+</ul>
+<h3 id="1-4-x"><a href="#1-4-x" class="headerlink" title="1.4.x"></a>1.4.x</h3><h4 id="完成功能-1"><a href="#完成功能-1" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>添加lib/spinner.js下载动画</li>
+</ul>
+<h3 id="1-3-x"><a href="#1-3-x" class="headerlink" title="1.3.x"></a>1.3.x</h3><h4 id="依赖-1"><a href="#依赖-1" class="headerlink" title="依赖"></a>依赖</h4><ul>
+<li>prompt-for-patched: 命令行问题及选择</li>
+</ul>
+<h4 id="完成功能-2"><a href="#完成功能-2" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>添加-c参数，可直接下载任意git仓库</li>
+<li>添加没有指定project-name时，可将当前目录初始化功能</li>
+</ul>
+<h3 id="1-2-x"><a href="#1-2-x" class="headerlink" title="1.2.x"></a>1.2.x</h3><h4 id="依赖-2"><a href="#依赖-2" class="headerlink" title="依赖"></a>依赖</h4><ul>
+<li>download-git-repo: 下载github仓库</li>
+</ul>
+<h4 id="完成功能-3"><a href="#完成功能-3" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>使用download-git-repo替换download-github-repo</li>
+</ul>
+<h3 id="1-1-x"><a href="#1-1-x" class="headerlink" title="1.1.x"></a>1.1.x</h3><h4 id="依赖-3"><a href="#依赖-3" class="headerlink" title="依赖"></a>依赖</h4><ul>
+<li>khaos-patched: yyx自己基于khaos写的</li>
+</ul>
+<h4 id="完成功能-4"><a href="#完成功能-4" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>将khaos替换为khaos-patched</li>
+<li>添加lib/git-user.js获取作者</li>
+</ul>
+<h3 id="1-0-x"><a href="#1-0-x" class="headerlink" title="1.0.x"></a>1.0.x</h3><h4 id="依赖-4"><a href="#依赖-4" class="headerlink" title="依赖"></a>依赖</h4><ul>
+<li>commander: 命令行交互</li>
+<li>chalk: 命令行高亮</li>
+<li>cross-spawn: Node子进程</li>
+<li>download-github-repo: 下载github上仓库</li>
+<li>khaos: 生成项目</li>
+<li>rimraf: rm -rf</li>
+<li>uid: 生成一串随机数</li>
+</ul>
+<h4 id="完成功能-5"><a href="#完成功能-5" class="headerlink" title="完成功能"></a>完成功能</h4><ul>
+<li>构建项目主框架，完成vue init功能和vue list功能，使用子进程切换执行脚本</li>
+<li>抽离lig/logger.js信息输出</li>
+<li>使用commander的方法,删除大量vue脚本代码</li>
+<li>增加目录下是否已有模板判断</li>
+</ul>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>当然，目前只是看了最初的几次提交，1.x版本还有好多次提交，代码结构比较简单，后面会愈发复杂。同时上述原理只是1.x的前期版本，不包括2.x以及3.x版本。特别是3.x有了较大的改进。</p>
-<p>（未完待续。。。。）</p>
+<p>———————-2019.8.3—————————-</p>
+<p>1.x版本已经看完了，2.x版本也已经看完了。看完后觉得还是非常清晰地，当然和3.x版本相比，之前的版本还是有比较大的去别的。1.x和2.x版本总体上来讲，还是从远程仓库下载模板，可配置性虽然有但还是不够灵活，而且扩展性非常不好。3.x版本的最大特点就是插件式引入，而且开发者也可以直接开发自己的插件，更加灵活。</p>
 
 </article>
 
