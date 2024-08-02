@@ -2012,7 +2012,7 @@ strong {
   position: relative;
 }
 i.solitude {
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1;
   font-synthesis: style;
 }
@@ -4137,9 +4137,10 @@ span.tags-punctuation i {
 }
 #page-header #nav #nav-right div {
   padding: 0;
+  margin-left: 0.5rem;
 }
 #page-header #nav #nav-right .nav-button {
-  margin-left: 12px;
+  margin-left: 0.5rem;
   cursor: pointer;
 }
 #page-header #nav #nav-right .nav-button a {
@@ -5982,7 +5983,6 @@ span.tags-punctuation {
   border-radius: 60px;
   margin-bottom: 12px;
   color: var(--efu-white);
-  width: 100px;
   position: relative;
   background-size: 200%;
 }
@@ -5993,7 +5993,7 @@ span.tags-punctuation {
   background-position: 100% 0;
 }
 .banners-link-title {
-  margin-left: auto;
+  margin: 0 0.1rem 0 0.5rem;
 }
 #category-bar {
   padding: 0.4rem 0.7rem;
@@ -7898,6 +7898,12 @@ div#banners .bannerText {
   font-size: 66px;
   font-weight: 700;
   box-shadow: var(--efu-shadow-blackdeep);
+}
+@media screen and (max-width: 768px) {
+  .flink .tags-group-icon {
+    width: 70px;
+    height: 70px;
+  }
 }
 .tags-group-icon:nth-child(even) {
   margin-top: 1rem;
