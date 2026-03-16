@@ -1,0 +1,878 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpenClaw 设计解析（八）：安全模型 | HDi - 随便记</title><noscript>开启JavaScript才能访问本站哦~</noscript><link rel="icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><!-- index.css--><link rel="stylesheet" href="/css/index.css?v=2.0.6"><!-- inject head--><link rel="canonical" href="http://example.com/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"><!-- aplayer--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.css"><!-- swiper--><!-- fancybox ui--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.min.css"><!-- katex--><!-- Open Graph--><meta name="description" content="OpenClaw 设计解析（八）：安全模型 本篇聚焦 OpenClaw 的插件系统：插件包长什么样、如何被发现和加载、为什么 Hook 与 slot 是两个关键机制，以及这些设计背后的工程取舍。 1. 先看全貌：OpenClaw 的插件不是“动态 import 一下”OpenClaw 的核心设计是"><!-- pwa--><meta name="apple-mobile-web-app-capable" content="HDi - 随便记"><meta name="theme-color" content="var(--efu-main)"><meta name="apple-mobile-web-app-status-bar-style" content="var(--efu-main)"><link rel="bookmark" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><link rel="apple-touch-icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" sizes="180x180"><script>console.log(' %c Solitude %c ' + '2.0.6' + ' %c https://github.com/everfu/hexo-theme-solitude',
+    'background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff',
+    'background:#ff9a9a ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff',
+    'background:unset ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff')
+</script><script defer src="https://cloud.umami.is/script.js" data-website-id="74f224fa-d3eb-4426-be2a-a67cbb900e1c"></script><script>(()=>{
+        const saveToLocal = {
+            set: function setWithExpiry(key, value, ttl) {
+                if (ttl === 0)
+                    return
+                const now = new Date()
+                const expiryDay = ttl * 86400000
+                const item = {
+                    value: value,
+                    expiry: now.getTime() + expiryDay
+                }
+                localStorage.setItem(key, JSON.stringify(item))
+            },
+            get: function getWithExpiry(key) {
+                const itemStr = localStorage.getItem(key)
+    
+                if (!itemStr) {
+                    return undefined
+                }
+                const item = JSON.parse(itemStr)
+                const now = new Date()
+    
+                if (now.getTime() > item.expiry) {
+                    localStorage.removeItem(key)
+                    return undefined
+                }
+                return item.value
+            }
+        };
+        window.utils = {
+            saveToLocal: saveToLocal,
+            getCSS: (url, id = false) => new Promise((resolve, reject) => {
+              const link = document.createElement('link')
+              link.rel = 'stylesheet'
+              link.href = url
+              if (id) link.id = id
+              link.onerror = reject
+              link.onload = link.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                link.onload = link.onreadystatechange = null
+                resolve()
+              }
+              document.head.appendChild(link)
+            }),
+            getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+              const script = document.createElement('script')
+              script.src = url
+              script.async = true
+              script.onerror = reject
+              script.onload = script.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                script.onload = script.onreadystatechange = null
+                resolve()
+              }
+    
+              Object.keys(attr).forEach(key => {
+                script.setAttribute(key, attr[key])
+              })
+    
+              document.head.appendChild(script)
+            }),
+            addGlobalFn: (key, fn, name = false, parent = window) => {
+                const globalFn = parent.globalFn || {}
+                const keyObj = globalFn[key] || {}
+        
+                if (name && keyObj[name]) return
+        
+                name = name || Object.keys(keyObj).length
+                keyObj[name] = fn
+                globalFn[key] = keyObj
+                parent.globalFn = globalFn
+            },
+        }
+    })()</script><!-- global head--><script>const GLOBAL_CONFIG = {
+    root: '/',
+    algolia: undefined,
+    localsearch: undefined,
+    runtime: '2024-07-22 00:00:00',
+    lazyload: {
+        enable: false,
+        error: '/img/error_load.avif'
+    },
+    copyright: {"limit":50,"author":"作者: HDi","link":"链接: ","source":"来源: HDi - 随便记","info":"著作权归作者所有。 商业转载请联系作者获得授权，非商业转载请注明出处。"},
+    highlight: {"limit":600,"expand":true,"copy":true,"syntax":"highlight.js"},
+    randomlink: false,
+    lang: {"theme":{"dark":"已切换至深色模式","light":"已切换至浅色模式"},"copy":{"success":"复制成功","error":"复制失败"},"backtop":"返回顶部","time":{"day":"天前","hour":"小时前","just":"刚刚","min":"分钟前","month":"个月前"},"day":" 天","f12":"开发者模式已打开，请遵循GPL协议。","totalk":"无需删除空行，直接输入评论即可"},
+    aside: {
+        sayhello: {
+            morning: "✨ 一日之计在于晨",
+            noon: "午休的时间到了",
+            afternoon: "集中精力，攻克难关 🍵",
+            night: "不要太劳累了，早睡更健康",
+            goodnight: "晚安 😴",
+        },
+        sayhello2: ["💻 前端搬砖工","📷 摄影爱好者","💪 佛系健身人","🎨 绘画小能手","🏂 雪道破坏者","🎸 吉他一直落灰","🕙 倾向周密计划","✨ 独处获得能量"],
+        sayhello3: {
+            prefix: '好久不见，',
+            back: '欢迎再次回来，',
+        },
+    },
+    covercolor: {
+        enable: true
+    },
+    comment: false,
+    lightbox: 'fancybox',
+    post_ai: false,
+    right_menu: {"mode":{"dark":"深色模式","light":"浅色模式"},"img_error":"此图片无法复制与下载","music":{"start":"播放音乐","stop":"暂停音乐"}},
+    lure: false,
+    expire: false,
+};</script><!-- page-config head--><script id="config-diff">var PAGE_CONFIG = {
+    is_post: true,
+    is_page: false,
+    is_home: false,
+    page: '',
+    toc: true,
+    comment: false,
+    ai_text: false
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body id="body"><!-- universe--><canvas id="universe"></canvas><!-- background img--><!-- loading--><!-- console--><div id="console"><div class="close-btn" onclick="sco.hideConsole()"><i class="solitude fa-solid fa-xmark"></i></div><div class="console-card-group"><div class="console-card-group-right"><div class="console-card tags" onclick="sco.hideConsole()"><div class="card-content"><div class="author-content-item-tips">标签</div><div class="author-content-item-title">寻找感兴趣的领域</div></div><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div><div class="console-card history" onclick="sco.hideConsole()"><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2026/03/"><span class="card-archive-list-date">2026/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/08/"><span class="card-archive-list-date">2025/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/06/"><span class="card-archive-list-date">2025/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/02/"><span class="card-archive-list-date">2025/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/12/"><span class="card-archive-list-date">2024/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/08/"><span class="card-archive-list-date">2024/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/07/"><span class="card-archive-list-date">2024/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/06/"><span class="card-archive-list-date">2024/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/05/"><span class="card-archive-list-date">2024/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">5</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">2023/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">2023/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/02/"><span class="card-archive-list-date">2023/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/10/"><span class="card-archive-list-date">2022/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/05/"><span class="card-archive-list-date">2022/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/04/"><span class="card-archive-list-date">2022/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/02/"><span class="card-archive-list-date">2022/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/01/"><span class="card-archive-list-date">2022/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/12/"><span class="card-archive-list-date">2021/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/10/"><span class="card-archive-list-date">2021/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/09/"><span class="card-archive-list-date">2021/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/07/"><span class="card-archive-list-date">2021/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/06/"><span class="card-archive-list-date">2021/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/12/"><span class="card-archive-list-date">2020/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">12</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/11/"><span class="card-archive-list-date">2020/11</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/05/"><span class="card-archive-list-date">2020/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/08/"><span class="card-archive-list-date">2019/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/07/"><span class="card-archive-list-date">2019/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/03/"><span class="card-archive-list-date">2019/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/02/"><span class="card-archive-list-date">2019/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/01/"><span class="card-archive-list-date">2019/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/12/"><span class="card-archive-list-date">2018/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/09/"><span class="card-archive-list-date">2018/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">4</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/04/"><span class="card-archive-list-date">2018/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/03/"><span class="card-archive-list-date">2018/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/01/"><span class="card-archive-list-date">2018/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/10/"><span class="card-archive-list-date">2017/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/09/"><span class="card-archive-list-date">2017/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li></ul></div></div></div><div class="button-group"><div class="console-btn-item"><span class="darkmode_switchbutton" onclick="sco.switchDarkMode()" title="昼夜切换"><i class="solitude fa-solid fa-circle-half-stroke"></i></span></div><div class="console-btn-item" id="consoleHideAside"><span class="asideSwitch" onclick="sco.switchHideAside()" title="边栏显示控制"><i class="solitude fa-solid fa-mattress-pillow"></i></span></div><div class="console-btn-item" id="consoleMusic" onclick="sco.musicToggle()"><span class="music-switch" title="音乐开关"><i class="solitude fa-solid fa-compact-disc"></i></span></div></div><div class="console-mask" onclick="sco.hideConsole()"></div></div><!-- sidebar--><div id="sidebar" style="zoom: 1;"><div id="menu-mask" style="display: none;"></div><div id="sidebar-menus"><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">84</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">11</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">52</div></a></div></div></div><span class="sidebar-menu-item-title">功能</span><div class="sidebar-menu-item"><span class="darkmode_switchbutton menu-child" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span>显示模式</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div><span class="sidebar-menu-item-title">标签</span><div class="card-widget card-tags card-archives card-webinfo card-allinfo"><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div></div></div><!-- keyboard--><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav class="show" id="nav"><div id="nav-group"><div id="blog_name"><a id="site-name" href="/" title="返回博客主页"><span class="title">HDi</span><i class="solitude fa-solid fa-home"></i></a></div><div id="page-name-mask"><div id="page-name"><a id="page-name-text" onclick="sco.toTop()">OpenClaw 设计解析（八）：安全模型</a></div></div><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div></div><div id="nav-left"></div><div id="nav-right"><div class="nav-button" id="randomPost_button"><a class="site-page" onclick="toRandomPost()" title="随机一篇文章" href="javascript:void(0);"><i class="solitude fa-solid fa-dice-d6"></i></a></div><div class="nav-button" id="nav-console"><a class="console_switchbutton" onclick="sco.showConsole()" title="中控台" href="javascript:void(0);"><label><i class="left"></i><i class="center"></i><i class="right"></i></label></a></div><div class="nav-button" id="nav-totop" onclick="sco.toTop()"><a class="totopbtn"><i class="solitude fa-solid fa-arrow-up"></i><span id="percent">0</span></a></div><div id="toggle-menu"><a class="site-page"><i class="solitude fa-solid fa-bars"></i></a></div></div></div></nav><div class="coverdiv" id="coverdiv"><img class="nolazyload" id="post-cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp" alt="OpenClaw 设计解析（八）：安全模型"></div><div id="post-info"><div id="post-firstinfo"><div class="meta-firstline"><a class="post-meta-original" title="该文章为原创文章，注意版权协议">原创</a><span class="post-meta-categories"><a class="post-meta-categories" href="/categories/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a></span><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型</span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw</span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析</span></a></div></div></div></div><h1 class="post-title">OpenClaw 设计解析（八）：安全模型</h1><div id="post-meta"><div class="meta-secondline"><span class="post-meta-date" title="发布于 2026-03-15 21:11:00"><i class="post-meta-icon solitude fa-solid fa-calendar-days"></i><time datetime="2026-03-15T13:11:00.000Z">2026-03-15T13:11:00.000Z</time></span><a class="post-meta-pv" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="文章热度"><i class="post-meta-icon solitude fa-solid fa-fire-flame-curved"></i><span id="busuanzi_value_page_pv"><i class="solitude fa-solid fa-spinner"></i></span></a></div></div></div><section class="main-hero-waves-area waves-area"><svg class="waves-svg" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M -160 44 c 30 0 58 -18 88 -18 s 58 18 88 18 s 58 -18 88 -18 s 58 18 88 18 v 44 h -352 Z"></path></defs><g class="parallax"><use href="#gentle-wave" x="48" y="0"></use><use href="#gentle-wave" x="48" y="3"></use><use href="#gentle-wave" x="48" y="5"></use><use href="#gentle-wave" x="48" y="7"></use></g></svg></section></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="OpenClaw-设计解析（八）：安全模型"><a href="#OpenClaw-设计解析（八）：安全模型" class="headerlink" title="OpenClaw 设计解析（八）：安全模型"></a>OpenClaw 设计解析（八）：安全模型</h1><blockquote>
+<p>本篇聚焦 OpenClaw 的插件系统：插件包长什么样、如何被发现和加载、为什么 Hook 与 slot 是两个关键机制，以及这些设计背后的工程取舍。</p>
+</blockquote>
+<h2 id="1-先看全貌：OpenClaw-的插件不是“动态-import-一下”"><a href="#1-先看全貌：OpenClaw-的插件不是“动态-import-一下”" class="headerlink" title="1. 先看全貌：OpenClaw 的插件不是“动态 import 一下”"></a>1. 先看全貌：OpenClaw 的插件不是“动态 import 一下”</h2><p>OpenClaw 的核心设计是 <strong>lean core</strong>：把通道、工具、记忆、后台服务、认证桥接这类可选能力尽量放到 <code>extensions/</code> 里。<br>从当前仓库看，<code>extensions/</code> 下已经有很多扩展目录，但它们并不是几套互相独立的小系统，而是都走同一条插件运行时。</p>
+<div class="mermaid">flowchart TD
+    P[&quot;插件来源&lt;br&#x2F;&gt;bundled &#x2F; workspace &#x2F; global&quot;] --&gt; D[&quot;发现候选插件&quot;]
+    D --&gt; M[&quot;读 manifest&lt;br&#x2F;&gt;openclaw.plugin.json&quot;]
+    M --&gt; L[&quot;判定是否启用&lt;br&#x2F;&gt;校验 configSchema&quot;]
+    L --&gt; J[&quot;Jiti 加载模块&quot;]
+    J --&gt; R[&quot;plugin.register(api)&quot;]
+    R --&gt; G[&quot;写入 PluginRegistry&quot;]
+
+    subgraph U[&quot;Registry 消费面&quot;]
+        direction LR
+        A[&quot;Agent&lt;br&#x2F;&gt;工具 &#x2F; Hook&quot;]
+        C[&quot;Channels&quot;]
+        H[&quot;HTTP &#x2F; Gateway&quot;]
+        S[&quot;Services &#x2F; CLI &#x2F; Commands&quot;]
+    end
+
+    G --&gt; A
+    G --&gt; C
+    G --&gt; H
+    G --&gt; S</div>
+
+<p>最重要的心智模型不是“插件文件怎么 import”，而是：</p>
+<blockquote>
+<p><strong>插件的职责是把能力注册进系统；系统真正消费的是一个统一的 <code>PluginRegistry</code>。</strong></p>
+</blockquote>
+<p>换句话说，插件系统解决的是“<strong>如何把外部能力接入核心运行时</strong>”，而不是“如何把代码拆成多个 npm 包”。</p>
+<h2 id="2-一个插件在-OpenClaw-里到底是什么"><a href="#2-一个插件在-OpenClaw-里到底是什么" class="headerlink" title="2. 一个插件在 OpenClaw 里到底是什么"></a>2. 一个插件在 OpenClaw 里到底是什么</h2><p>从源码看，一个插件最常见有三部分：</p>
+<ul>
+<li><code>package.json</code><ul>
+<li>负责 npm 包元数据和 <code>openclaw.extensions</code> 入口声明</li>
+</ul>
+</li>
+<li><code>openclaw.plugin.json</code><ul>
+<li>负责插件声明：<code>id</code>、<code>kind</code>、<code>configSchema</code> 等</li>
+</ul>
+</li>
+<li><code>index.ts</code><ul>
+<li>负责真正注册能力</li>
+</ul>
+</li>
+</ul>
+<p>最小的心智模型可以压成这样：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> &#123;</span><br><span class="line">  <span class="attr">id</span>: <span class="string">&quot;my-plugin&quot;</span>,</span><br><span class="line">  <span class="attr">kind</span>: <span class="string">&quot;memory&quot;</span>, <span class="comment">// 可选</span></span><br><span class="line">  <span class="attr">configSchema</span>: &#123; <span class="comment">/* JSON schema */</span> &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="title function_">register</span>(<span class="params">api</span>) &#123;</span><br><span class="line">    api.<span class="title function_">registerTool</span>(...)</span><br><span class="line">    api.<span class="title function_">registerChannel</span>(...)</span><br><span class="line">    api.<span class="title function_">on</span>(<span class="string">&quot;before_prompt_build&quot;</span>, <span class="title function_">async</span> () =&gt; (&#123;</span><br><span class="line">      <span class="attr">prependContext</span>: <span class="string">&quot;...&quot;</span>,</span><br><span class="line">    &#125;))</span><br><span class="line">  &#125;,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>更关键的一点是：<strong>插件不是“继承某个基类”</strong>，而是一个带 <code>register(api)</code> 的自注册对象。<br>你在 <code>register()</code> 里调用了什么 API，这个插件就拥有什么能力。</p>
+<p>例如：</p>
+<ul>
+<li><code>matrix</code> 插件主要注册 channel</li>
+<li><code>memory-core</code> 插件注册 memory tools 和 CLI</li>
+<li><code>diffs</code> 插件同时注册 tool、HTTP handler、<code>before_prompt_build</code> hook</li>
+</ul>
+<p>这也是 OpenClaw 很工程化的一点：<strong>插件的“种类”不是死板 class hierarchy，而是注册出来的能力组合。</strong></p>
+<h3 id="2-1-为什么要单独有-openclaw-plugin-json"><a href="#2-1-为什么要单独有-openclaw-plugin-json" class="headerlink" title="2.1 为什么要单独有 openclaw.plugin.json"></a>2.1 为什么要单独有 <code>openclaw.plugin.json</code></h3><p>这里的设计非常关键。<br>OpenClaw 不是一上来就执行插件代码，而是先读 manifest：</p>
+<ul>
+<li>先知道插件 <code>id</code></li>
+<li>先知道它是不是 <code>kind: &quot;memory&quot;</code></li>
+<li>先拿到 <code>configSchema</code></li>
+<li>先做配置校验和启用判断</li>
+</ul>
+<p>这样做的好处很实际：</p>
+<ol>
+<li><strong>还没执行第三方代码，就能先做一轮筛选</strong></li>
+<li><strong>配置不合法时，可以直接报错，不用 import 插件</strong></li>
+<li><strong>像 memory 这种“单例槽位”可以在加载前就决定谁该启用</strong></li>
+</ol>
+<p>所以 manifest 的本质不是元数据装饰，而是：</p>
+<blockquote>
+<p><strong>把“声明阶段”和“执行阶段”拆开。</strong></p>
+</blockquote>
+<h3 id="2-2-当前仓库里的插件版图"><a href="#2-2-当前仓库里的插件版图" class="headerlink" title="2.2 当前仓库里的插件版图"></a>2.2 当前仓库里的插件版图</h3><p>从当前仓库看，<code>extensions/</code> 下有 40 个目录；其中 <code>shared</code>、<code>test-utils</code> 是辅助包，真正带 <code>openclaw.plugin.json</code> 的运行时插件有 38 个。</p>
+<p>如果按“它给 OpenClaw 增加了什么能力”来分，当前插件大致可以分成下面 5 类：</p>
+<div class="mermaid">flowchart TD
+    P[&quot;当前插件版图&quot;]
+
+    subgraph C[&quot;通道插件&quot;]
+        direction LR
+        C1[&quot;telegram &#x2F; slack &#x2F; discord &#x2F; ...&quot;]
+    end
+
+    subgraph M[&quot;记忆插件&quot;]
+        direction LR
+        M1[&quot;memory-core &#x2F; memory-lancedb&quot;]
+    end
+
+    subgraph A[&quot;模型 &#x2F; Provider &#x2F; Auth&quot;]
+        direction LR
+        A1[&quot;copilot-proxy &#x2F; gemini auth &#x2F; portal auth&quot;]
+    end
+
+    subgraph T[&quot;工具 &#x2F; 工作流 &#x2F; Hook&quot;]
+        direction LR
+        T1[&quot;diffs &#x2F; llm-task &#x2F; lobster &#x2F; open-prose&quot;]
+    end
+
+    subgraph R[&quot;运行时服务 &#x2F; 控制&quot;]
+        direction LR
+        R1[&quot;voice-call &#x2F; device-pair &#x2F; phone-control &#x2F; ...&quot;]
+    end
+
+    P --&gt; C
+    P --&gt; M
+    P --&gt; A
+    P --&gt; T
+    P --&gt; R</div>
+
+<h3 id="2-2-1-通道插件：把外部消息面接进-OpenClaw"><a href="#2-2-1-通道插件：把外部消息面接进-OpenClaw" class="headerlink" title="2.2.1 通道插件：把外部消息面接进 OpenClaw"></a>2.2.1 通道插件：把外部消息面接进 OpenClaw</h3><p>这类插件最容易理解，本质上是在做“渠道接入”。<br>它们最核心的动作通常就是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">api.<span class="title function_">registerChannel</span>(&#123; <span class="attr">plugin</span>: xxxChannelPlugin &#125;)</span><br></pre></td></tr></table></figure>
+
+<p>当前仓库里的通道插件包括：</p>
+<ul>
+<li><code>telegram</code></li>
+<li><code>slack</code></li>
+<li><code>discord</code></li>
+<li><code>whatsapp</code></li>
+<li><code>signal</code></li>
+<li><code>matrix</code></li>
+<li><code>googlechat</code></li>
+<li><code>msteams</code></li>
+<li><code>mattermost</code></li>
+<li><code>feishu</code></li>
+<li><code>line</code></li>
+<li><code>irc</code></li>
+<li><code>twitch</code></li>
+<li><code>nostr</code></li>
+<li><code>nextcloud-talk</code></li>
+<li><code>synology-chat</code></li>
+<li><code>imessage</code></li>
+<li><code>bluebubbles</code></li>
+<li><code>zalo</code></li>
+<li><code>zalouser</code></li>
+<li><code>tlon</code></li>
+</ul>
+<p>这类插件解决的问题很明确：</p>
+<ul>
+<li>把某个平台的消息收进 OpenClaw</li>
+<li>把 OpenClaw 的回复再发回那个平台</li>
+<li>在需要时补 webhook &#x2F; dock &#x2F; 平台特有适配</li>
+</ul>
+<p>例如：</p>
+<ul>
+<li><code>googlechat</code>、<code>zalo</code>、<code>bluebubbles</code>、<code>nostr</code> 不只是注册 channel，还会注册 webhook&#x2F;HTTP handler</li>
+<li><code>zalo</code>、<code>zalouser</code> 还会补充对应的 dock 或额外工具</li>
+</ul>
+<p>所以“通道插件”不是一个聊天 UI 皮肤，而是把整条消息收发链路接进来。</p>
+<h3 id="2-2-2-记忆插件：给-agent-一条长期记忆主路径"><a href="#2-2-2-记忆插件：给-agent-一条长期记忆主路径" class="headerlink" title="2.2.2 记忆插件：给 agent 一条长期记忆主路径"></a>2.2.2 记忆插件：给 agent 一条长期记忆主路径</h3><p>当前内置了两个 memory 插件：</p>
+<ul>
+<li><code>memory-core</code><ul>
+<li>默认文件型长期记忆实现</li>
+<li>提供 <code>memory_search</code>、<code>memory_get</code></li>
+<li>也会注册 <code>memory</code> CLI</li>
+</ul>
+</li>
+<li><code>memory-lancedb</code><ul>
+<li>向量记忆后端</li>
+<li>除了 memory tools 和 CLI，还会在 agent 生命周期里做自动 recall &#x2F; auto-capture</li>
+<li>同时注册自己的后台 service</li>
+</ul>
+</li>
+</ul>
+<p>这两个插件之所以重要，是因为它们不是“多一个工具”这么简单，而是在定义：</p>
+<blockquote>
+<p><strong>OpenClaw 的长期记忆主路径到底由谁实现。</strong></p>
+</blockquote>
+<p>这也是为什么后面会有 <code>memory slot</code> 机制，强制只选一个 owner。</p>
+<h3 id="2-2-3-模型-Provider-Auth-插件：给模型接入补登录和配置"><a href="#2-2-3-模型-Provider-Auth-插件：给模型接入补登录和配置" class="headerlink" title="2.2.3 模型 &#x2F; Provider &#x2F; Auth 插件：给模型接入补登录和配置"></a>2.2.3 模型 &#x2F; Provider &#x2F; Auth 插件：给模型接入补登录和配置</h3><p>这类插件主要解决“模型怎么接进来”和“用户怎么完成认证”。</p>
+<p>当前比较典型的例子有：</p>
+<ul>
+<li><code>copilot-proxy</code><ul>
+<li>把本地 Copilot Proxy 暴露成 provider</li>
+<li>让用户填 base URL 和模型列表，然后把 provider 配置补进 OpenClaw</li>
+</ul>
+</li>
+<li><code>google-gemini-cli-auth</code><ul>
+<li>负责 Gemini CLI &#x2F; Google Code Assist 的 OAuth</li>
+</ul>
+</li>
+<li><code>minimax-portal-auth</code><ul>
+<li>负责 MiniMax 的 OAuth，并补 provider 配置和默认模型</li>
+</ul>
+</li>
+<li><code>qwen-portal-auth</code><ul>
+<li>负责 Qwen portal 的 device-code OAuth，并补默认模型配置</li>
+</ul>
+</li>
+</ul>
+<p>这类插件最关键的动作通常是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">api.<span class="title function_">registerProvider</span>(&#123;</span><br><span class="line">  <span class="attr">id</span>: <span class="string">&quot;...&quot;</span>,</span><br><span class="line">  <span class="attr">auth</span>: [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">kind</span>: <span class="string">&quot;oauth&quot;</span> | <span class="string">&quot;device_code&quot;</span> | <span class="string">&quot;custom&quot;</span>,</span><br><span class="line">      <span class="attr">run</span>: <span class="title function_">async</span> () =&gt; (&#123; ... &#125;),</span><br><span class="line">    &#125;,</span><br><span class="line">  ],</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>它们的作用不是“替 agent 多加一个 tool”，而是：</p>
+<ul>
+<li>把新的 provider 暴露给配置系统</li>
+<li>提供登录流程</li>
+<li>在登录成功后把 credential、provider config、default model 一起写回系统</li>
+</ul>
+<h3 id="2-2-4-工具-工作流-Hook-插件：直接增强-agent-能力"><a href="#2-2-4-工具-工作流-Hook-插件：直接增强-agent-能力" class="headerlink" title="2.2.4 工具 &#x2F; 工作流 &#x2F; Hook 插件：直接增强 agent 能力"></a>2.2.4 工具 &#x2F; 工作流 &#x2F; Hook 插件：直接增强 agent 能力</h3><p>这类插件更像“给 agent 加脑子和手脚”。</p>
+<p>当前比较典型的例子有：</p>
+<ul>
+<li><code>diffs</code><ul>
+<li>给 agent 提供只读 diff 查看和图像渲染</li>
+<li>还会注册 HTTP handler，并在 <code>before_prompt_build</code> 注入 guidance</li>
+</ul>
+</li>
+<li><code>llm-task</code><ul>
+<li>一个 JSON-only 的通用 LLM 小工具，适合流程里的结构化子任务</li>
+</ul>
+</li>
+<li><code>lobster</code><ul>
+<li>typed workflow tool，支持 resumable approvals</li>
+</ul>
+</li>
+<li><code>thread-ownership</code><ul>
+<li>通过 Hook 控制 Slack thread ownership，防止多个 agent 同时回复同一线程</li>
+</ul>
+</li>
+<li><code>open-prose</code><ul>
+<li>更像一组随插件分发的 skill pack，本身运行时代码很薄</li>
+</ul>
+</li>
+</ul>
+<p>这类插件说明了一件很关键的事：</p>
+<blockquote>
+<p><strong>OpenClaw 的插件不只是“多加几个工具”，还可以直接介入 agent 的运行流程。</strong></p>
+</blockquote>
+<p>例如 <code>thread-ownership</code> 就不是新 tool，而是直接在 <code>message_received</code> &#x2F; <code>message_sending</code> 这类 Hook 上改行为。</p>
+<h3 id="2-2-5-运行时服务-控制插件：给系统补后台能力"><a href="#2-2-5-运行时服务-控制插件：给系统补后台能力" class="headerlink" title="2.2.5 运行时服务 &#x2F; 控制插件：给系统补后台能力"></a>2.2.5 运行时服务 &#x2F; 控制插件：给系统补后台能力</h3><p>还有一些插件不偏消息通道，也不偏 agent 工具，而是在补 OpenClaw 自己的运行时能力。</p>
+<p>比较典型的例子有：</p>
+<ul>
+<li><code>voice-call</code><ul>
+<li>语音通话运行时</li>
+<li>会注册 gateway methods、tool、CLI、service</li>
+</ul>
+</li>
+<li><code>device-pair</code><ul>
+<li>生成 setup code &#x2F; 二维码并审批设备配对</li>
+</ul>
+</li>
+<li><code>phone-control</code><ul>
+<li>管理高风险手机节点命令的 arm &#x2F; disarm</li>
+<li>带定时器 service 和命令入口</li>
+</ul>
+</li>
+<li><code>talk-voice</code><ul>
+<li><code>/voice</code> 命令，用来列出和切换 ElevenLabs Talk voice</li>
+</ul>
+</li>
+<li><code>diagnostics-otel</code><ul>
+<li>把诊断事件导出到 OpenTelemetry</li>
+</ul>
+</li>
+<li><code>acpx</code><ul>
+<li>注册 ACP runtime backend service</li>
+</ul>
+</li>
+</ul>
+<p>这类插件说明 OpenClaw 的插件边界并不只在“agent 侧”，而是整个系统层面：</p>
+<ul>
+<li>可以加命令</li>
+<li>可以加 service</li>
+<li>可以加 gateway method</li>
+<li>可以加控制面能力</li>
+</ul>
+<p>所以在 OpenClaw 里，“插件系统”更像一个统一扩展框架，而不是单纯的“agent tool marketplace”。</p>
+<h2 id="3-真正的核心对象：PluginRegistry"><a href="#3-真正的核心对象：PluginRegistry" class="headerlink" title="3. 真正的核心对象：PluginRegistry"></a>3. 真正的核心对象：<code>PluginRegistry</code></h2><p>加载完成后，OpenClaw 不会到处传“插件实例列表”，而是产出一个统一的 <code>PluginRegistry</code>。<br>可以把它理解成一张“能力总表”。</p>
+<div class="mermaid">flowchart TD
+    P1[&quot;插件 A&quot;] --&gt; R[&quot;PluginRegistry&quot;]
+    P2[&quot;插件 B&quot;] --&gt; R
+    P3[&quot;插件 C&quot;] --&gt; R
+
+    R --&gt; T[&quot;tools&quot;]
+    R --&gt; K[&quot;typedHooks &#x2F; hooks&quot;]
+    R --&gt; C[&quot;channels&quot;]
+    R --&gt; H[&quot;httpHandlers &#x2F; httpRoutes&quot;]
+    R --&gt; G[&quot;gatewayHandlers&quot;]
+    R --&gt; S[&quot;services&quot;]
+    R --&gt; CLI[&quot;cliRegistrars &#x2F; commands&quot;]
+    R --&gt; PR[&quot;providers&quot;]</div>
+
+<p>它背后的意思非常简单：</p>
+<ul>
+<li>Agent 运行时关心的是“当前有哪些工具、哪些 Hook”</li>
+<li>Gateway 关心的是“当前有哪些 channel、哪些 HTTP 路由”</li>
+<li>CLI 关心的是“当前有哪些附加命令”</li>
+</ul>
+<p>这些消费者都不需要知道：</p>
+<ul>
+<li>插件是从 bundled 还是 global 来的</li>
+<li>插件是 TS 还是 JS</li>
+<li>插件入口文件叫什么</li>
+</ul>
+<p>它们只需要查 <code>PluginRegistry</code>。</p>
+<p>这也是为什么文章里不应该把重点放在函数名本身，而应该放在这个动作上：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">plugin.<span class="title function_">register</span>(api)</span><br><span class="line">-&gt; api.<span class="title function_">registerTool</span>(...)</span><br><span class="line">-&gt; registry.<span class="property">tools</span>.<span class="title function_">push</span>(...)</span><br><span class="line"></span><br><span class="line">plugin.<span class="title function_">register</span>(api)</span><br><span class="line">-&gt; api.<span class="title function_">registerChannel</span>(...)</span><br><span class="line">-&gt; registry.<span class="property">channels</span>.<span class="title function_">push</span>(...)</span><br></pre></td></tr></table></figure>
+
+<p>从设计上看，这一步把“插件世界”翻译成了“核心运行时能理解的统一表结构”。</p>
+<h2 id="4-插件发现：从哪里找，为什么按这个顺序找"><a href="#4-插件发现：从哪里找，为什么按这个顺序找" class="headerlink" title="4. 插件发现：从哪里找，为什么按这个顺序找"></a>4. 插件发现：从哪里找，为什么按这个顺序找</h2><p>OpenClaw 的发现顺序可以直接压成 4 层：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;1. config 路径&lt;br&#x2F;&gt;plugins.load.paths&quot;] --&gt; B[&quot;2. workspace&lt;br&#x2F;&gt;.openclaw&#x2F;extensions&quot;]
+    B --&gt; C[&quot;3. bundled&lt;br&#x2F;&gt;extensions&#x2F;&quot;]
+    C --&gt; D[&quot;4. global&lt;br&#x2F;&gt;~&#x2F;.openclaw&#x2F;extensions&quot;]</div>
+
+<p>这个顺序不是随便排的，它体现了很明确的工程取舍：</p>
+<ul>
+<li><strong>config 路径最高</strong><ul>
+<li>方便开发调试，显式覆盖最强</li>
+</ul>
+</li>
+<li><strong>workspace 次之</strong><ul>
+<li>项目级插件跟着代码仓库走</li>
+</ul>
+</li>
+<li><strong>bundled 再后</strong><ul>
+<li>官方内置能力可以稳定存在</li>
+</ul>
+</li>
+<li><strong>global 最后</strong><ul>
+<li>用户安装的全局插件不应该默默盖掉 bundled</li>
+</ul>
+</li>
+</ul>
+<p>特别是最后一点，源码里甚至专门写了注释：<br><strong>全局自动发现要排在 bundled 后面</strong>，避免“用户随手装了一个插件就把内置能力影子覆盖了”。</p>
+<h3 id="4-1-发现阶段到底扫什么"><a href="#4-1-发现阶段到底扫什么" class="headerlink" title="4.1 发现阶段到底扫什么"></a>4.1 发现阶段到底扫什么</h3><p>发现时并不是只找 <code>index.ts</code>。<br>逻辑大致是：</p>
+<ol>
+<li>看传入的是文件还是目录</li>
+<li>如果是目录，优先读 <code>package.json</code> 里的 <code>openclaw.extensions</code></li>
+<li>如果没声明，再回退到 <code>index.ts</code> &#x2F; <code>index.js</code> &#x2F; <code>index.mjs</code> &#x2F; <code>index.cjs</code></li>
+<li>过滤掉 <code>.d.ts</code></li>
+<li>忽略 <code>.bak</code>、<code>.backup-*</code>、<code>.disabled</code> 这类目录</li>
+</ol>
+<p>也就是说，发现阶段已经在做“<strong>把 npm 包形态翻译成插件候选项</strong>”这件事了。</p>
+<h3 id="4-2-发现阶段为什么就做安全检查"><a href="#4-2-发现阶段为什么就做安全检查" class="headerlink" title="4.2 发现阶段为什么就做安全检查"></a>4.2 发现阶段为什么就做安全检查</h3><p>OpenClaw 没给插件做沙箱，插件本质上仍是受信任代码。<br>但即便如此，发现阶段还是做了几层很务实的 guardrail：</p>
+<ul>
+<li>禁止入口文件逃出插件根目录</li>
+<li>拒绝 world-writable 路径</li>
+<li>非 bundled 路径检查所有权是否可疑</li>
+<li>解析真实路径，防止符号链接把插件指到别处</li>
+</ul>
+<p>所以这里的安全目标不是“把插件隔离起来”，而是：</p>
+<blockquote>
+<p><strong>尽量避免把明显不靠谱的路径，当成可执行插件候选。</strong></p>
+</blockquote>
+<h2 id="5-插件加载：为什么先判定、再-import、再注册"><a href="#5-插件加载：为什么先判定、再-import、再注册" class="headerlink" title="5. 插件加载：为什么先判定、再 import、再注册"></a>5. 插件加载：为什么先判定、再 import、再注册</h2><p>OpenClaw 的加载管线可以压成下面这张图：</p>
+<div class="mermaid">flowchart LR
+    subgraph S1[&quot;声明阶段&quot;]
+        direction TB
+        A[&quot;读取 plugins 配置&quot;] --&gt; B[&quot;discover candidates&quot;]
+        B --&gt; C[&quot;读取 manifest registry&quot;]
+        C --&gt; D[&quot;决定是否启用&lt;br&#x2F;&gt;allow &#x2F; deny &#x2F; entries &#x2F; slots&quot;]
+        D --&gt; E[&quot;校验插件配置&quot;]
+    end
+
+    subgraph S2[&quot;执行阶段&quot;]
+        direction TB
+        F[&quot;Jiti 懒加载模块&quot;] --&gt; G[&quot;取 default export&quot;]
+        G --&gt; H[&quot;调用 register(api)&quot;]
+        H --&gt; I[&quot;能力写入 PluginRegistry&quot;]
+    end
+
+    E --&gt; F</div>
+
+<p>最关键的一点是：</p>
+<blockquote>
+<p><strong>不是所有“被发现”的插件都会被执行。</strong></p>
+</blockquote>
+<p>在真正 <code>import</code> 之前，加载器已经会先做：</p>
+<ul>
+<li>是否被禁用</li>
+<li>是否被 allowlist &#x2F; denylist 命中</li>
+<li>是否被别的同 ID 插件覆盖</li>
+<li>是否满足 slot 条件</li>
+<li><code>configSchema</code> 是否存在</li>
+<li>用户配置是否通过 schema 校验</li>
+</ul>
+<p>只有过了这些关，才会走到真正的模块加载。</p>
+<h3 id="5-1-一次加载的核心伪代码"><a href="#5-1-一次加载的核心伪代码" class="headerlink" title="5.1 一次加载的核心伪代码"></a>5.1 一次加载的核心伪代码</h3><p>如果把 <code>loadOpenClawPlugins()</code> 压成一段伪代码，核心大致是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">registry = <span class="title function_">createPluginRegistry</span>()</span><br><span class="line">candidates = <span class="title function_">discoverPlugins</span>()</span><br><span class="line">manifests = <span class="title function_">loadManifestRegistry</span>(candidates)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (candidate <span class="keyword">of</span> candidates) &#123;</span><br><span class="line">  manifest = manifests.<span class="title function_">get</span>(candidate.<span class="property">rootDir</span>)</span><br><span class="line">  <span class="keyword">if</span> (!manifest) <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="title function_">alreadyOverriddenByHigherPriorityPlugin</span>(manifest.<span class="property">id</span>)) &#123;</span><br><span class="line">    <span class="title function_">markDisabled</span>(<span class="string">&quot;overridden&quot;</span>)</span><br><span class="line">    <span class="keyword">continue</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="title function_">disabledByConfig</span>(manifest.<span class="property">id</span>)) &#123;</span><br><span class="line">    <span class="title function_">markDisabled</span>(<span class="string">&quot;config / allowlist / denylist&quot;</span>)</span><br><span class="line">    <span class="keyword">continue</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="title function_">blockedBySlot</span>(manifest)) &#123;</span><br><span class="line">    <span class="title function_">markDisabled</span>(<span class="string">&quot;slot decision&quot;</span>)</span><br><span class="line">    <span class="keyword">continue</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="title function_">validatePluginConfig</span>(manifest.<span class="property">configSchema</span>, userConfig)</span><br><span class="line"></span><br><span class="line">  <span class="variable language_">module</span> = <span class="title function_">jitiLoad</span>(candidate.<span class="property">source</span>)</span><br><span class="line">  plugin = <span class="title function_">resolveDefaultExport</span>(<span class="variable language_">module</span>)</span><br><span class="line"></span><br><span class="line">  plugin.<span class="title function_">register</span>(api)</span><br><span class="line">  <span class="comment">// api.registerXxx(...) 会把能力写进 registry</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这比直接记函数名更重要，因为它说明了加载器的设计思路：</p>
+<ol>
+<li><strong>先做 cheap check</strong></li>
+<li><strong>再做 expensive import</strong></li>
+<li><strong>最后交给插件自注册</strong></li>
+</ol>
+<h3 id="5-2-为什么用-Jiti"><a href="#5-2-为什么用-Jiti" class="headerlink" title="5.2 为什么用 Jiti"></a>5.2 为什么用 Jiti</h3><p>OpenClaw 这里没有强迫插件先预编译成 JS。<br>它用的是 <strong>Jiti</strong>，并且还是懒初始化：</p>
+<ul>
+<li>没有插件要加载时，Jiti 实例甚至不会创建</li>
+<li>需要时才开始支持 <code>.ts</code> &#x2F; <code>.tsx</code> &#x2F; <code>.mts</code> &#x2F; <code>.cts</code> &#x2F; <code>.js</code> &#x2F; <code>.mjs</code> &#x2F; <code>.cjs</code></li>
+<li>还会给 <code>openclaw/plugin-sdk</code> 打 alias，让插件开发者不用关心源码路径还是 <code>dist/</code> 路径</li>
+</ul>
+<p>从工程角度看，这是一个非常实用的折中：</p>
+<ul>
+<li><strong>开发者体验好</strong><ul>
+<li>插件可以直接写 TypeScript</li>
+</ul>
+</li>
+<li><strong>核心运行时仍然掌控加载边界</strong><ul>
+<li>不是把任意路径直接丢给 Node 原生 import</li>
+</ul>
+</li>
+<li><strong>测试和启动更省</strong><ul>
+<li>不需要时连加载器都不建</li>
+</ul>
+</li>
+</ul>
+<h3 id="5-3-一个很容易忽略的限制：register-必须同步"><a href="#5-3-一个很容易忽略的限制：register-必须同步" class="headerlink" title="5.3 一个很容易忽略的限制：register() 必须同步"></a>5.3 一个很容易忽略的限制：<code>register()</code> 必须同步</h3><p>源码里有一个非常务实的约束：</p>
+<ul>
+<li><code>register(api)</code> 可以返回 Promise</li>
+<li>但如果它真这么做，加载器只会给警告</li>
+<li><strong>不会等待异步注册完成</strong></li>
+</ul>
+<p>这背后的设计含义很明确：</p>
+<blockquote>
+<p><strong>插件注册阶段要尽量短、尽量同步，只做能力声明，不做慢初始化。</strong></p>
+</blockquote>
+<p>真正的异步动作更适合放到：</p>
+<ul>
+<li>service 生命周期</li>
+<li>hook 回调</li>
+<li>tool 执行</li>
+<li>HTTP handler &#x2F; gateway handler</li>
+</ul>
+<p>而不是放在 plugin bootstrap 自己身上。</p>
+<h2 id="6-Hook-系统：插件不只是在“加工具”，还在“改运行时”"><a href="#6-Hook-系统：插件不只是在“加工具”，还在“改运行时”" class="headerlink" title="6. Hook 系统：插件不只是在“加工具”，还在“改运行时”"></a>6. Hook 系统：插件不只是在“加工具”，还在“改运行时”</h2><p>如果只把插件理解成“加几个工具”，会低估 OpenClaw 的插件系统。<br>更强的一层是：插件可以在运行过程中插入 Hook。</p>
+<p>开发者常见写法更像这样：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">api.<span class="title function_">on</span>(<span class="string">&quot;before_prompt_build&quot;</span>, <span class="title function_">async</span> () =&gt; (&#123;</span><br><span class="line">  <span class="attr">prependContext</span>: <span class="string">&quot;这里加一段提示&quot;</span>,</span><br><span class="line">&#125;))</span><br></pre></td></tr></table></figure>
+
+<p>或者：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">api.<span class="title function_">on</span>(<span class="string">&quot;message_sending&quot;</span>, <span class="title function_">async</span> () =&gt; &#123;</span><br><span class="line">  <span class="keyword">return</span> &#123; <span class="attr">cancel</span>: <span class="literal">true</span> &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>这说明插件系统不只是扩展能力表，它还允许插件<strong>介入运行流程</strong>。</p>
+<h3 id="6-1-两种-Hook-执行模型"><a href="#6-1-两种-Hook-执行模型" class="headerlink" title="6.1 两种 Hook 执行模型"></a>6.1 两种 Hook 执行模型</h3><p>Hook runner 的设计很清楚：按“会不会修改结果”分成两类。</p>
+<div class="mermaid">flowchart LR
+    subgraph N[&quot;通知型 Hook&quot;]
+        N1[&quot;message_sent&quot;]
+        N2[&quot;agent_end&quot;]
+        N3[&quot;gateway_stop&quot;]
+    end
+
+    subgraph M[&quot;修改型 Hook&quot;]
+        M1[&quot;before_model_resolve&quot;]
+        M2[&quot;before_prompt_build&quot;]
+        M3[&quot;message_sending&quot;]
+        M4[&quot;before_tool_call&quot;]
+    end</div>
+
+<p>更准确一点：</p>
+<ul>
+<li><strong>通知型 Hook</strong><ul>
+<li>不关心返回值</li>
+<li>所有 handler 并行跑</li>
+<li>适合日志、观测、收尾通知</li>
+</ul>
+</li>
+<li><strong>修改型 Hook</strong><ul>
+<li>关心返回值</li>
+<li>按 priority 从高到低顺序执行</li>
+<li>适合改模型、改 prompt、拦截发送、改 tool 参数</li>
+</ul>
+</li>
+</ul>
+<h3 id="6-2-为什么修改型-Hook-必须顺序执行"><a href="#6-2-为什么修改型-Hook-必须顺序执行" class="headerlink" title="6.2 为什么修改型 Hook 必须顺序执行"></a>6.2 为什么修改型 Hook 必须顺序执行</h3><p>因为它们要解决的是“<strong>谁先改、怎么合并</strong>”的问题。</p>
+<p>例如 <code>before_prompt_build</code>：</p>
+<ul>
+<li>一个插件想 prepend 一段上下文</li>
+<li>另一个插件也想 prepend 一段上下文</li>
+<li>这时系统就必须定义：<ul>
+<li>顺序</li>
+<li>合并规则</li>
+<li>冲突时谁优先</li>
+</ul>
+</li>
+</ul>
+<p>OpenClaw 的做法是：</p>
+<ol>
+<li>按 priority 降序排</li>
+<li>依次执行</li>
+<li>用特定 merge 规则合并结果</li>
+</ol>
+<p>所以它不是“广播通知”，而更像一个<strong>可组合的中间件链</strong>。</p>
+<div class="mermaid">sequenceDiagram
+    participant P1 as Hook A(priority 10)
+    participant P2 as Hook B(priority 5)
+    participant P3 as Hook C(priority 0)
+    participant R as Merge Result
+
+    P1-&gt;&gt;R: 返回结果 A
+    P2-&gt;&gt;R: 基于 A 合并结果 B
+    P3-&gt;&gt;R: 基于 AB 合并结果 C</div>
+
+<h3 id="6-3-一个很有代表性的例子"><a href="#6-3-一个很有代表性的例子" class="headerlink" title="6.3 一个很有代表性的例子"></a>6.3 一个很有代表性的例子</h3><p><code>diffs</code> 插件就是个很好的例子：</p>
+<ul>
+<li>它注册了一个工具</li>
+<li>注册了一个 HTTP handler</li>
+<li>还在 <code>before_prompt_build</code> 阶段加了一段 agent guidance</li>
+</ul>
+<p>也就是说，它不是单纯“多了个 diff 工具”，而是在：</p>
+<ul>
+<li>能力层新增工具</li>
+<li>接口层新增访问入口</li>
+<li>提示层改写 agent 行为</li>
+</ul>
+<p>这正是 OpenClaw 插件系统比较成熟的地方：<strong>插件可以同时扩多个面，而不需要改核心。</strong></p>
+<h2 id="7-Slot：为什么-memory-插件只能有一个"><a href="#7-Slot：为什么-memory-插件只能有一个" class="headerlink" title="7. Slot：为什么 memory 插件只能有一个"></a>7. Slot：为什么 memory 插件只能有一个</h2><p>插件系统里有一个很特殊的机制：<strong>slot</strong>。</p>
+<p>目前最典型的就是 <code>memory</code> 槽位。<br>原因很简单：长期记忆是一个“单例能力”，不能让两个 memory 插件同时当主路径。</p>
+<div class="mermaid">flowchart TD
+    A[&quot;memory-core&quot;] --&gt; S{&quot;memory slot&quot;}
+    B[&quot;memory-lancedb&quot;] --&gt; S
+    C[&quot;其他普通插件&quot;] --&gt; N[&quot;不受 slot 影响&quot;]
+
+    S --&gt;|选中 memory-core| D[&quot;只启用 memory-core&quot;]
+    S --&gt;|选中 memory-lancedb| E[&quot;只启用 memory-lancedb&quot;]
+    S --&gt;|none| F[&quot;禁用所有 memory 插件&quot;]</div>
+
+<p>这背后的工程判断非常务实：</p>
+<ul>
+<li>如果 <code>memory-core</code> 和 <code>memory-lancedb</code> 同时激活</li>
+<li>二者都可能注册 memory 工具、CLI、索引逻辑</li>
+<li>用户就会得到一套行为冲突的系统</li>
+</ul>
+<p>所以 OpenClaw 干脆把它建模成：</p>
+<blockquote>
+<p><strong>某些能力不是“多插件并存”，而是“单槽位选择一个 owner”。</strong></p>
+</blockquote>
+<p>这也是为什么 manifest 里的 <code>kind: &quot;memory&quot;</code> 不是装饰字段，而会实实在在影响启用决策。</p>
+<h2 id="8-安装：为什么安装器也围绕-manifest-转"><a href="#8-安装：为什么安装器也围绕-manifest-转" class="headerlink" title="8. 安装：为什么安装器也围绕 manifest 转"></a>8. 安装：为什么安装器也围绕 manifest 转</h2><p>插件安装路径也很符合前面的整体思路：<strong>先处理包，再按 manifest 认插件身份。</strong></p>
+<p>最常见的 npm 安装链路可以压成这样：</p>
+<div class="mermaid">flowchart LR
+    subgraph P[&quot;包处理&quot;]
+        direction TB
+        A[&quot;npm pack --ignore-scripts&quot;] --&gt; B[&quot;下载 tarball&quot;]
+        B --&gt; C[&quot;解压到临时目录&quot;]
+    end
+
+    subgraph M[&quot;认插件身份&quot;]
+        direction TB
+        D[&quot;读取 package.json&lt;br&#x2F;&gt;+ openclaw.plugin.json&quot;]
+        E[&quot;确定 pluginId&quot;]
+        F[&quot;复制到 ~&#x2F;.openclaw&#x2F;extensions&#x2F;&lt;pluginId&gt;&quot;]
+        G[&quot;下次启动时被 discover &#x2F; load&quot;]
+        D --&gt; E --&gt; F --&gt; G
+    end
+
+    C --&gt; D</div>
+
+<p>这里有两个很值得保留的工程细节：</p>
+<ol>
+<li><strong>优先用 <code>openclaw.plugin.json</code> 里的 <code>id</code></strong><ul>
+<li>而不是盲信 npm 包名</li>
+<li>这样安装键和运行时插件 ID 保持一致</li>
+</ul>
+</li>
+<li><strong>安装时有 targeted code scan</strong><ul>
+<li>主要是 warn-only 的危险模式提示</li>
+<li>不是沙箱，也不是硬阻断</li>
+</ul>
+</li>
+</ol>
+<p>所以安装器做的事情，本质上也和加载器一样：</p>
+<ul>
+<li>识别插件身份</li>
+<li>保证路径安全</li>
+<li>把它放到一个标准发现位置</li>
+<li>把最终执行推迟到下次正常加载流程</li>
+</ul>
+<h2 id="9-Plugin-SDK：为什么插件开发者能像在写“内建模块”"><a href="#9-Plugin-SDK：为什么插件开发者能像在写“内建模块”" class="headerlink" title="9. Plugin SDK：为什么插件开发者能像在写“内建模块”"></a>9. Plugin SDK：为什么插件开发者能像在写“内建模块”</h2><p>对插件作者来说，最直接的体验是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; ... &#125; <span class="keyword">from</span> <span class="string">&quot;openclaw/plugin-sdk&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>他们不需要关心：</p>
+<ul>
+<li>开发时是 <code>src/plugin-sdk/*</code></li>
+<li>生产时是 <code>dist/plugin-sdk/*</code></li>
+<li>插件被 Jiti 直接跑，还是被构建产物消费</li>
+</ul>
+<p>因为加载器已经把这层 alias 处理掉了。</p>
+<p>这意味着 Plugin SDK 的职责不是“多暴露点 helper”这么简单，而是：</p>
+<blockquote>
+<p><strong>给插件作者一层稳定的 API 边界，让第三方扩展像在写 OpenClaw 内建模块一样工作。</strong></p>
+</blockquote>
+<h2 id="10-小结：OpenClaw-插件系统真正解决了什么"><a href="#10-小结：OpenClaw-插件系统真正解决了什么" class="headerlink" title="10. 小结：OpenClaw 插件系统真正解决了什么"></a>10. 小结：OpenClaw 插件系统真正解决了什么</h2><p>如果只看表面，OpenClaw 的插件系统像是：</p>
+<ul>
+<li>能发现插件</li>
+<li>能加载 TypeScript</li>
+<li>能注册工具和 Hook</li>
+</ul>
+<p>但从源码设计看，它真正解决的是 5 个更底层的问题：</p>
+<ol>
+<li><strong>怎么在不膨胀核心的情况下持续加能力</strong><ul>
+<li>lean core，能力外置</li>
+</ul>
+</li>
+<li><strong>怎么在执行第三方代码前先做声明和校验</strong><ul>
+<li>manifest-first</li>
+</ul>
+</li>
+<li><strong>怎么把插件能力翻译成核心运行时可消费的统一结构</strong><ul>
+<li><code>PluginRegistry</code></li>
+</ul>
+</li>
+<li><strong>怎么让插件既能“加功能”，又能“改流程”</strong><ul>
+<li>tool + hook 双扩展面</li>
+</ul>
+</li>
+<li><strong>怎么避免单例能力互相打架</strong><ul>
+<li>slot 机制</li>
+</ul>
+</li>
+</ol>
+<p>所以对读者来说，最值得记住的一句话是：</p>
+<blockquote>
+<p><strong>OpenClaw 的插件系统不是“动态 import 一堆扩展”，而是一套“声明 -&gt; 发现 -&gt; 启用决策 -&gt; 自注册 -&gt; 统一调度”的运行时接入框架。</strong></p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author_group"><a class="post-copyright__author_img" href="/about/"><img class="post-copyright__author_img_front" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"></a><div class="post-copyright__author_name">HDi - 随便记</div><div class="post-copyright__author_desc"></div></div><div class="post-tools" id="post-tools"><div class="post-tools-left"><div id="quit-box" onclick="RemoveRewardMask()"></div><div class="post-reward"><div class="reward-button" title="赞赏作者" onclick="AddRewardMask()"><i class="solitude fa-solid fa-heart"></i>赞赏作者</div><div class="reward-main"><ul class="reward-all"><span class="reward-title">感谢你的欣赏！</span><ul class="reward-group"><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/wechatpay.JPG" alt="wechat" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">wechat</div></li><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/alipay.JPG" alt="alipay" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">alipay</div></li></ul><a class="reward-main-btn" href="/about/"><div class="reward-text">赞赏名单</div><div class="reward-dec">因为你的支持，我感受到写文章的价值。</div></a></ul></div></div><script>function RemoveRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "none";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "none";
+    }
+}
+
+function AddRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "flex";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "flex";
+    }
+}</script></div></div><div class="social-share"><a class="social-share-ico icon-qq" target="_blank" rel="noopener" href="https://connect.qq.com/widget/shareqq/index.html?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F15%2F2026-03-15-%25E5%25AE%2589%25E5%2585%25A8%25E6%25A8%25A1%25E5%259E%258B%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9A%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B&amp;desc=undefined&amp;summary=undefined&amp;site=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9A%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B&amp;pics=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-15.webp" title="分享到QQ"><i class="solitude fab fa-qq"></i></a><a class="social-share-ico icon-weibo" target="_blank" rel="noopener" href="http://service.weibo.com/share/share.php?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F15%2F2026-03-15-%25E5%25AE%2589%25E5%2585%25A8%25E6%25A8%25A1%25E5%259E%258B%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9A%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B&amp;pic=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-15.webp" title="分享到微博"><i class="solitude fab fa-weibo"></i></a><div class="social-share-ico icon-link" onclick="utils.copy(&quot;http://example.com/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/&quot;)" title="复制文章链接"><i class="solitude fas fa-link"></i></div><div class="social-share-ico icon-qrcode" title="使用手机扫码阅读这篇文章"><i class="solitude fas fa-qrcode"></i><div class="share-main"><div class="share-main-all"><div id="qrcode"></div><div class="reward-dec">使用手机扫码阅读这篇文章</div></div></div><script pjax>typeof QRCode === 'function' && new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/');
+window.addEventListener('DOMContentLoaded', () => {
+    new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/');
+});
+</script></div></div><div class="post-copyright__notice"><span class="post-copyright-info">本文是原创文章，采用<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">CC BY-NC-SA 4.0</a>协议，完整转载请注明来自<a href="/">HDi - 随便记</a></span></div></div><div class="post-tools-right"><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型<span class="tagsPageCount">13</span></span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw<span class="tagsPageCount">8</span></span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析<span class="tagsPageCount">8</span></span></a></div></div></div><nav class="needEndHide pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">OpenClaw 设计解析（七）：插件系统</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="solitude fa-solid fa-star"></i><span>喜欢这篇的人也看了</span><div class="relatedPosts-link"><a onclick="event.preventDefault(); toRandomPost();" href="javascript:void(0);" rel="external nofollow" data-pjax-state="">随便逛逛</a></div></div><div class="relatedPosts-list"><div><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（七）：插件系统</div></div></a></div><div><a href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（六）：上下文记忆</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><div class="author-info__top-group"><div class="author-info__sayhi" id="author-info__sayhi" onclick="sco.changeSayHelloText()">sayhello.morning</div></div></div><div class="avatar-img-group"><img class="avatar-img" alt="头像" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><div class="avatar-sticker"><img class="avatar-sticker-img" src="https://file-1305436646.file.myqcloud.com/blog-icon/EMOJI-44.png" alt="心情贴纸"></div></div><div class="author-info__description_group"><div class="author-info__description">分享自己对技术成长的<b>总结梳理</b>，对新事物或者爱好的<b>探索历程</b>。</div><div class="author-info__description2">相信你可以在这里找到对你有用的知识和教程。</div></div><div class="author-info__bottom-group"><a class="author-info__bottom-group-left" href="/about/"><div class="author-info__name">HDi</div><div class="author-info__desc"></div></a><div class="card-info-social-icons is-center"><a class="social-icon" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a></div></div></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="solitude fa-solid fa-bars"></i><span>文章目录</span></div><div class="toc-content" id="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#OpenClaw-%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9A%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B"><span class="toc-text">OpenClaw 设计解析（八）：安全模型</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%88%E7%9C%8B%E5%85%A8%E8%B2%8C%EF%BC%9AOpenClaw-%E7%9A%84%E6%8F%92%E4%BB%B6%E4%B8%8D%E6%98%AF%E2%80%9C%E5%8A%A8%E6%80%81-import-%E4%B8%80%E4%B8%8B%E2%80%9D"><span class="toc-text">1. 先看全貌：OpenClaw 的插件不是“动态 import 一下”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%B8%80%E4%B8%AA%E6%8F%92%E4%BB%B6%E5%9C%A8-OpenClaw-%E9%87%8C%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">2. 一个插件在 OpenClaw 里到底是什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%8D%95%E7%8B%AC%E6%9C%89-openclaw-plugin-json"><span class="toc-text">2.1 为什么要单独有 openclaw.plugin.json</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%BD%93%E5%89%8D%E4%BB%93%E5%BA%93%E9%87%8C%E7%9A%84%E6%8F%92%E4%BB%B6%E7%89%88%E5%9B%BE"><span class="toc-text">2.2 当前仓库里的插件版图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1-%E9%80%9A%E9%81%93%E6%8F%92%E4%BB%B6%EF%BC%9A%E6%8A%8A%E5%A4%96%E9%83%A8%E6%B6%88%E6%81%AF%E9%9D%A2%E6%8E%A5%E8%BF%9B-OpenClaw"><span class="toc-text">2.2.1 通道插件：把外部消息面接进 OpenClaw</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2-%E8%AE%B0%E5%BF%86%E6%8F%92%E4%BB%B6%EF%BC%9A%E7%BB%99-agent-%E4%B8%80%E6%9D%A1%E9%95%BF%E6%9C%9F%E8%AE%B0%E5%BF%86%E4%B8%BB%E8%B7%AF%E5%BE%84"><span class="toc-text">2.2.2 记忆插件：给 agent 一条长期记忆主路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-3-%E6%A8%A1%E5%9E%8B-Provider-Auth-%E6%8F%92%E4%BB%B6%EF%BC%9A%E7%BB%99%E6%A8%A1%E5%9E%8B%E6%8E%A5%E5%85%A5%E8%A1%A5%E7%99%BB%E5%BD%95%E5%92%8C%E9%85%8D%E7%BD%AE"><span class="toc-text">2.2.3 模型 &#x2F; Provider &#x2F; Auth 插件：给模型接入补登录和配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-4-%E5%B7%A5%E5%85%B7-%E5%B7%A5%E4%BD%9C%E6%B5%81-Hook-%E6%8F%92%E4%BB%B6%EF%BC%9A%E7%9B%B4%E6%8E%A5%E5%A2%9E%E5%BC%BA-agent-%E8%83%BD%E5%8A%9B"><span class="toc-text">2.2.4 工具 &#x2F; 工作流 &#x2F; Hook 插件：直接增强 agent 能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-5-%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9C%8D%E5%8A%A1-%E6%8E%A7%E5%88%B6%E6%8F%92%E4%BB%B6%EF%BC%9A%E7%BB%99%E7%B3%BB%E7%BB%9F%E8%A1%A5%E5%90%8E%E5%8F%B0%E8%83%BD%E5%8A%9B"><span class="toc-text">2.2.5 运行时服务 &#x2F; 控制插件：给系统补后台能力</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E7%9C%9F%E6%AD%A3%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AF%B9%E8%B1%A1%EF%BC%9APluginRegistry"><span class="toc-text">3. 真正的核心对象：PluginRegistry</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%8F%92%E4%BB%B6%E5%8F%91%E7%8E%B0%EF%BC%9A%E4%BB%8E%E5%93%AA%E9%87%8C%E6%89%BE%EF%BC%8C%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8C%89%E8%BF%99%E4%B8%AA%E9%A1%BA%E5%BA%8F%E6%89%BE"><span class="toc-text">4. 插件发现：从哪里找，为什么按这个顺序找</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%8F%91%E7%8E%B0%E9%98%B6%E6%AE%B5%E5%88%B0%E5%BA%95%E6%89%AB%E4%BB%80%E4%B9%88"><span class="toc-text">4.1 发现阶段到底扫什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%8F%91%E7%8E%B0%E9%98%B6%E6%AE%B5%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%B1%E5%81%9A%E5%AE%89%E5%85%A8%E6%A3%80%E6%9F%A5"><span class="toc-text">4.2 发现阶段为什么就做安全检查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E6%8F%92%E4%BB%B6%E5%8A%A0%E8%BD%BD%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%85%88%E5%88%A4%E5%AE%9A%E3%80%81%E5%86%8D-import%E3%80%81%E5%86%8D%E6%B3%A8%E5%86%8C"><span class="toc-text">5. 插件加载：为什么先判定、再 import、再注册</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%80%E6%AC%A1%E5%8A%A0%E8%BD%BD%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BC%AA%E4%BB%A3%E7%A0%81"><span class="toc-text">5.1 一次加载的核心伪代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E7%94%A8-Jiti"><span class="toc-text">5.2 为什么用 Jiti</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%B8%80%E4%B8%AA%E5%BE%88%E5%AE%B9%E6%98%93%E5%BF%BD%E7%95%A5%E7%9A%84%E9%99%90%E5%88%B6%EF%BC%9Aregister-%E5%BF%85%E9%A1%BB%E5%90%8C%E6%AD%A5"><span class="toc-text">5.3 一个很容易忽略的限制：register() 必须同步</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-Hook-%E7%B3%BB%E7%BB%9F%EF%BC%9A%E6%8F%92%E4%BB%B6%E4%B8%8D%E5%8F%AA%E6%98%AF%E5%9C%A8%E2%80%9C%E5%8A%A0%E5%B7%A5%E5%85%B7%E2%80%9D%EF%BC%8C%E8%BF%98%E5%9C%A8%E2%80%9C%E6%94%B9%E8%BF%90%E8%A1%8C%E6%97%B6%E2%80%9D"><span class="toc-text">6. Hook 系统：插件不只是在“加工具”，还在“改运行时”</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%A4%E7%A7%8D-Hook-%E6%89%A7%E8%A1%8C%E6%A8%A1%E5%9E%8B"><span class="toc-text">6.1 两种 Hook 执行模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BF%AE%E6%94%B9%E5%9E%8B-Hook-%E5%BF%85%E9%A1%BB%E9%A1%BA%E5%BA%8F%E6%89%A7%E8%A1%8C"><span class="toc-text">6.2 为什么修改型 Hook 必须顺序执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E4%B8%AA%E5%BE%88%E6%9C%89%E4%BB%A3%E8%A1%A8%E6%80%A7%E7%9A%84%E4%BE%8B%E5%AD%90"><span class="toc-text">6.3 一个很有代表性的例子</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-Slot%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88-memory-%E6%8F%92%E4%BB%B6%E5%8F%AA%E8%83%BD%E6%9C%89%E4%B8%80%E4%B8%AA"><span class="toc-text">7. Slot：为什么 memory 插件只能有一个</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%AE%89%E8%A3%85%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%89%E8%A3%85%E5%99%A8%E4%B9%9F%E5%9B%B4%E7%BB%95-manifest-%E8%BD%AC"><span class="toc-text">8. 安装：为什么安装器也围绕 manifest 转</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-Plugin-SDK%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E8%80%85%E8%83%BD%E5%83%8F%E5%9C%A8%E5%86%99%E2%80%9C%E5%86%85%E5%BB%BA%E6%A8%A1%E5%9D%97%E2%80%9D"><span class="toc-text">9. Plugin SDK：为什么插件开发者能像在写“内建模块”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E5%B0%8F%E7%BB%93%EF%BC%9AOpenClaw-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9C%9F%E6%AD%A3%E8%A7%A3%E5%86%B3%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-text">10. 小结：OpenClaw 插件系统真正解决了什么</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="solitude fa-solid fa-map"></i><span>最近发布</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img alt="OpenClaw 设计解析（八）：安全模型" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp"></a><div class="content"><span class="title" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型">OpenClaw 设计解析（八）：安全模型</span><span class="article-recent_post_categories" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img alt="OpenClaw 设计解析（七）：插件系统" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp"></a><div class="content"><span class="title" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统">OpenClaw 设计解析（七）：插件系统</span><span class="article-recent_post_categories" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆"><img alt="OpenClaw 设计解析（六）：上下文记忆" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp"></a><div class="content"><span class="title" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆">OpenClaw 设计解析（六）：上下文记忆</span><span class="article-recent_post_categories" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"><img alt="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-12.webp"></a><div class="content"><span class="title" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</span><span class="article-recent_post_categories" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"><img alt="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-11.webp"></a><div class="content"><span class="title" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</span><span class="article-recent_post_categories" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/">大模型</span></div></div></div></div></div></div></main><footer id="footer"><div id="st-footer-bar"><div class="footer-logo"><span>HDi</span></div><div class="footer-bar-description">Articles from HDi.</div><a class="footer-bar-link" href="/about/">Learn more</a></div><div id="footer_deal"><a class="deal_link" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a><div class="nolazyload footer_mini_logo" id="footer_mini_logo" title="返回顶部" onclick="sco.toTop()"><img src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" alt="返回顶部"></div><a class="deal_link" target="_blank" rel="noopener" href="https://www.xiaohongshu.com/user/profile/5ffb06bf0000000001003e37" title="Xiaohongshu"><i class="solitude  fa fa-book"></i></a></div><div id="st-footer"></div><div id="footer-bar"><div class="footer-bar-links"><div class="footer-bar-left"><div class="copyright">© 2024 - 2026 By&nbsp;<a class="footer-bar-link" href="/">HDi</a></div></div><div class="footer-bar-right"><a class="footer-bar-link" target="_blank" rel="noopener" href="https://github.com/everfu/hexo-theme-solitude" alt="主题">主题</a></div></div></div></footer></div><!-- right_menu--><div id="rightMenu"><div class="rightMenu-group rightMenu-small"><div class="rightMenu-item" id="menu-backward"><i class="solitude fa-solid fa-arrow-left"></i></div><div class="rightMenu-item" id="menu-forward"><i class="solitude fa-solid fa-arrow-right"></i></div><div class="rightMenu-item" id="menu-refresh"><i class="solitude fa-solid fa-arrow-rotate-right"></i></div><div class="rightMenu-item" id="menu-top"><i class="solitude fa-solid fa-arrow-up"></i></div></div><div class="rightMenu-group rightMenu-line rightMenuPlugin"><div class="rightMenu-item" id="menu-copytext"><i class="solitude fa-solid fa-clone"></i><span>复制选中文本</span></div><div class="rightMenu-item" id="menu-pastetext"><i class="solitude fa-solid fa-clipboard"></i><span>粘贴文本</span></div><div class="rightMenu-item" id="menu-newwindow"><i class="solitude fa-regular fa-window-maximize"></i><span>新窗口打开</span></div><div class="rightMenu-item" id="menu-copylink"><i class="solitude fa-solid fa-link"></i><span>复制链接地址</span></div><div class="rightMenu-item" id="menu-copyimg"><i class="solitude fa-solid fa-clone"></i><span>复制此图片</span></div><div class="rightMenu-item" id="menu-downloadimg"><i class="solitude fa-solid fa-cloud-arrow-down"></i><span>下载此图片</span></div><div class="rightMenu-item" id="menu-music-toggle"><i class="solitude fa-solid fa-play"></i><span>播放音乐</span></div><div class="rightMenu-item" id="menu-music-back"><i class="solitude fa-solid fa-backward"></i><span>切换到上一首</span></div><div class="rightMenu-item" id="menu-music-forward"><i class="solitude fa-solid fa-forward"></i><span>切换到下一首</span></div><div class="rightMenu-item" id="menu-music-copyMusicName"><i class="solitude fa-solid fa-clone"></i><span>复制歌名</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-randomPost" onclick="toRandomPost()||rm.hideRightMenu()"><i class="solitude fas fa-tower-broadcast"></i><span>随机文章</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/categories/')||rm.hideRightMenu()"><i class="solitude fas fa-clone"></i><span>全部分类</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/tags/')||rm.hideRightMenu()"><i class="solitude fas fa-tags"></i><span>全部标签</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-darkmode" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span class="menu-darkmode-text">深色模式</span></div></div></div><div id="rightmenu-mask"></div><!-- inject body--><div><script src="/js/utils.js?v=2.0.6"></script><script src="/js/main.js?v=2.0.6"></script><script src="/js/third_party/waterfall.min.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pjax/0.2.8/pjax.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script><script src="/js/third_party/universe.min.js?v=2.0.6"></script><script>dark()
+</script><script src="https://cdnjs.cloudflare.com/ajax/libs/node-snackbar/0.1.16/snackbar.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.umd.min.js"></script><script>var meting_api = 'https://meting.qjqq.cn/?server=:server&type=:type&id=:id&auth=:auth&r=:r';</script><script src="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/meting/2.0.1/Meting.min.js"></script><script>const coverColorConfig = {
+    api: 'https://api.qjqq.cn/api/Imgcolor?img=',
+    time: 43200000
+}</script><script src="/js/covercolor/api.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.2.4/pace.min.js"></script><script src="/js/right_menu.js?v=2.0.6"></script><script>
+  (function() {
+    function getMermaidConfig(mode) {
+      var isDark = mode === 'dark';
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          fontSize: '14px',
+          /* Persona 配色基础变量 — 具体颜色由 CSS 按形状覆盖 */
+          primaryColor:       '#E30B20',
+          primaryBorderColor: '#000000',
+          primaryTextColor:   '#ffffff',
+          secondaryColor:     '#FFD700',
+          secondaryBorderColor:'#000000',
+          secondaryTextColor: '#000000',
+          tertiaryColor:      '#FF8C00',
+          tertiaryBorderColor:'#000000',
+          tertiaryTextColor:  '#000000',
+          lineColor:          '#000000',
+          textColor:          '#000000',
+          nodeBorder:         '#000000',
+          clusterBkg:         isDark ? '#2a2a2a' : '#fff8dc',
+          clusterBorder:      '#000000',
+          edgeLabelBackground:'transparent',
+          /* Sequence diagram */
+          actorBkg:           '#E30B20',
+          actorBorder:        '#000000',
+          actorTextColor:     '#ffffff',
+          actorLineColor:     '#000000',
+          signalColor:        '#000000',
+          signalTextColor:    '#000000',
+          labelBoxBkgColor:   '#FFD700',
+          labelBoxBorderColor:'#000000',
+          labelTextColor:     '#000000',
+          loopTextColor:      '#000000',
+          noteBkgColor:       '#FFD700',
+          noteBorderColor:    '#000000',
+          noteTextColor:      '#000000',
+          activationBkgColor: '#FF8C00',
+          activationBorderColor:'#000000',
+          sequenceNumberColor:'#ffffff',
+          background:         isDark ? '#1a1a1a' : '#ffffff'
+        }
+      };
+    }
+    var initMode = document.documentElement.getAttribute('data-theme') || 'light';
+    mermaid.initialize(getMermaidConfig(initMode));
+    /* Register theme change hook for dark/light toggle */
+    window.globalFn = window.globalFn || {};
+    window.globalFn.themeChange = window.globalFn.themeChange || {};
+    window.globalFn.themeChange.mermaid = function(mode) {
+      mermaid.initialize(getMermaidConfig(mode));
+      document.querySelectorAll('.mermaid[data-processed]').forEach(function(el) {
+        el.removeAttribute('data-processed');
+      });
+      mermaid.run();
+    };
+  })();
+</script>
+<div class="js-pjax"><script>mermaid.run();</script></div></div><!-- pjax--><script>const pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: ['title','#body-wrap','#site-config','meta[name="description"]','.js-pjax','meta[property^="og:"]','#config-diff'],
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+})
+
+document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+})
+
+document.addEventListener('pjax:complete', () => {
+    window.refreshFn()
+
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+        const newScript = document.createElement('script')
+        const content = item.text || item.textContent || item.innerHTML || ""
+        Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        newScript.appendChild(document.createTextNode(content))
+        item.parentNode.replaceChild(newScript, item)
+    })
+
+    GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+})
+
+document.addEventListener('pjax:error', (e) => {
+    if (e.request.status === 404) {
+        pjax.loadUrl('/404.html')
+    }
+})</script><!-- theme--><script>initTheme = () => {
+    let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const cachedMode = utils.saveToLocal.get('theme');
+    if (cachedMode === undefined) {
+        const nowMode =
+            isDarkMode ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', nowMode);
+    } else {
+        document.documentElement.setAttribute('data-theme', cachedMode);
+    }
+    typeof rm === 'object' && rm.mode(cachedMode === 'dark' && isDarkMode)
+}
+initTheme()</script><!-- google adsense--><!-- search--><!-- Tianli-Talk--><!-- music--><div class="needEndHide" id="nav-music" onclick="sco.musicToggle()"><div id="nav-music-hoverTips">音乐已暂停</div><meting-js id="12344278889" server="netease" type="playlist" mutex="true" preload="none" data-lrctype="0" order="random" theme="var(--efu-main)"></meting-js></div></body></html><script>const posts=["2026/03/15/2026-03-15-安全模型/","2026/03/14/2026-03-14-插件系统/","2026/03/13/2026-03-13-上下文记忆/","2026/03/12/2026-03-12-Agent运行时/","2026/03/11/2026-03-11-多通道架构/","2026/03/10/2026-03-10-Gateway/","2026/03/07/2026-03-07-CLI/","2026/03/02/2026-03-02-项目概览与架构全景/","2025/08/20/2025-08-20-大模型 Agent 实践/","2025/06/09/2025-06-09-大模型 Rag 实践/","2025/02/09/2025-02-09-交易系统构建/","2024/12/15/2024-12-15-比特币价值分析 copy/","2024/12/14/2024-12-14-投资交易初探/","2024/12/13/2024-12-13-加密货币概览/","2024/08/19/2024-08-19-大模型 Fine-tuning 实践/","2024/07/03/2024-07-03-解析大型语言模型的高效训练与推理之道/","2024/06/03/2024-06-03-《全面理解机器智能与生成式 AI 加速的新工业革命》/","2024/05/25/2024-05-25-faas-本地调试/","2024/05/24/2024-05-24-faas-静态页面/","2024/05/23/2024-05-23-faas-数据库能力/","2024/05/22/2024-05-22-faas-服务治理/","2024/05/21/2024-05-21-faas-编译部署/","2023/10/19/2023-10-19-faas-运行时/","2023/10/16/2023-10-16-faas-整体设计/","2023/08/14/2023-08-14-《富爸爸穷爸爸》读书笔记/","2023/02/03/2023-02-03-laf平台学习/","2022/10/14/2022-10-14-NodeJS学习/","2022/05/01/2022-05-01-webpack构建提速插件/","2022/04/14/2022-04-14-webpack tree shaking 记录/","2022/02/10/2022-02-10-NestJS设计思想/","2022/01/28/2022-01-28-前端项目构建速度优化调研/","2021/12/04/2021-12-04-px2rem或px2vw响应式方案探究/","2021/10/20/2021-10-20-hexo源码分析（四）/","2021/10/19/2021-10-19-hexo源码分析（三）/","2021/10/11/2021-10-11-hexo源码分析（二）/","2021/09/30/2021-09-30-hexo源码分析（一）/","2021/07/29/2021-07-29-可视化上报埋点方案/","2021/07/25/2021-07-25-脚手架设计/","2021/07/21/2021-07-21-业务基础库封装设计/","2021/06/10/2021-06-10-JWT梳理/","2020/12/07/2020-12-07-Vue生命周期/","2020/12/07/2020-12-07-Vuex整理/","2020/12/07/2020-12-07-Vue-Router/","2020/12/07/2020-12-07-Vue整理/","2020/12/06/2020-12-06-TCP协议/","2020/12/05/2020-12-05-POST和GET区别/","2020/12/04/2020-12-04-OSI模型整理/","2020/12/03/2020-12-03-微任务和宏任务/","2020/12/03/2020-12-03-JavaScript的面向对象/","2020/12/03/2020-12-03-JavaScript总结/","2020/12/02/2020-12-02-HTTP协议/","2020/12/01/2020-12-01-Cookie和Session对比/","2020/11/03/2020-11-03-常见性能优化手段/","2020/11/02/2020-11-02-浏览器同源跨域/","2020/11/01/2020-11-01-断点下载方案/","2020/05/07/2020-05-07-浏览器重绘和requestAnimationFrame/","2019/08/03/2019-08-03-vue-cli源码学习2.x/","2019/07/24/2019-07-24-vue-cli源码学习1.x/","2019/07/12/2019-07-12-Git分支相关/","2019/03/12/2019-03-12-使用webpack做一次项目优化/","2019/02/18/2019-02-18-解决回调地狱/","2019/01/19/2019-01-19-内联元素的一些探究/","2018/12/02/2018-12-02-论文查询平台/","2018/09/18/2018-09-18-CSS绘制三道杠和小圆点/","2018/09/10/2018-09-10-DDA算法和Bresenham算法画线/","2018/09/07/2018-09-07-CSS-iScroll实现水平滚动实例/","2018/09/06/2018-9-6小结/","2018/04/24/2018-04-24-JS原型链/","2018/04/16/2018-04-16-动手写一个hexo主题（下）/","2018/03/31/2018-03-31-gulp整理/","2018/03/28/2018-03-28-动手写一个hexo主题（上）/","2018/03/24/2018-03-24-npm的一些简单整理/","2018/03/17/2018-03-17-background属性和img标签/","2018/03/14/2018-03-14-如何实现一个轮播图/","2018/03/10/2018-03-10-Express+MySQL实现登陆界面/","2018/03/09/2018-03-09-数字图像处理和PS/","2018/03/06/2018-03-06-模板引擎ejs+gulp的使用/","2018/01/21/2018-1-21-JS对象整理/","2018/01/11/2018-1-11-实现一个问卷平台/","2017/10/24/2017-10-24-如何实现一个导航栏/","2017/10/18/2017-10-18-jQuery和原生DOM操作对比/","2017/10/10/2017-10-10-DOM操作/","2017/09/28/2017-09-28-页面常用布局整理/","2017/09/21/2017-09-21-hexo博客构建/"];function toRandomPost(){ pjax.loadUrl(GLOBAL_CONFIG.root+posts[Math.floor(Math.random()*posts.length)]); }</script>

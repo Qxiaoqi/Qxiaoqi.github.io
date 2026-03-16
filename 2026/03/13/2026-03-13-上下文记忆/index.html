@@ -1,0 +1,1572 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpenClaw 设计解析（六）：上下文记忆 | HDi - 随便记</title><noscript>开启JavaScript才能访问本站哦~</noscript><link rel="icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><!-- index.css--><link rel="stylesheet" href="/css/index.css?v=2.0.6"><!-- inject head--><link rel="canonical" href="http://example.com/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"><!-- aplayer--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.css"><!-- swiper--><!-- fancybox ui--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.min.css"><!-- katex--><!-- Open Graph--><meta name="description" content="OpenClaw 设计解析（六）：上下文记忆 本篇聚焦 OpenClaw 的“上下文记忆”设计：Pi 框架提供什么底座、OpenClaw 在其上做了哪些工程化增强，以及长期记忆插件如何与会话上下文配合。 很多项目一提“记忆”，第一反应是向量数据库或者 RAG。但从 OpenClaw 的源码看，它的"><!-- pwa--><meta name="apple-mobile-web-app-capable" content="HDi - 随便记"><meta name="theme-color" content="var(--efu-main)"><meta name="apple-mobile-web-app-status-bar-style" content="var(--efu-main)"><link rel="bookmark" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><link rel="apple-touch-icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" sizes="180x180"><script>console.log(' %c Solitude %c ' + '2.0.6' + ' %c https://github.com/everfu/hexo-theme-solitude',
+    'background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff',
+    'background:#ff9a9a ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff',
+    'background:unset ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff')
+</script><script defer src="https://cloud.umami.is/script.js" data-website-id="74f224fa-d3eb-4426-be2a-a67cbb900e1c"></script><script>(()=>{
+        const saveToLocal = {
+            set: function setWithExpiry(key, value, ttl) {
+                if (ttl === 0)
+                    return
+                const now = new Date()
+                const expiryDay = ttl * 86400000
+                const item = {
+                    value: value,
+                    expiry: now.getTime() + expiryDay
+                }
+                localStorage.setItem(key, JSON.stringify(item))
+            },
+            get: function getWithExpiry(key) {
+                const itemStr = localStorage.getItem(key)
+    
+                if (!itemStr) {
+                    return undefined
+                }
+                const item = JSON.parse(itemStr)
+                const now = new Date()
+    
+                if (now.getTime() > item.expiry) {
+                    localStorage.removeItem(key)
+                    return undefined
+                }
+                return item.value
+            }
+        };
+        window.utils = {
+            saveToLocal: saveToLocal,
+            getCSS: (url, id = false) => new Promise((resolve, reject) => {
+              const link = document.createElement('link')
+              link.rel = 'stylesheet'
+              link.href = url
+              if (id) link.id = id
+              link.onerror = reject
+              link.onload = link.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                link.onload = link.onreadystatechange = null
+                resolve()
+              }
+              document.head.appendChild(link)
+            }),
+            getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+              const script = document.createElement('script')
+              script.src = url
+              script.async = true
+              script.onerror = reject
+              script.onload = script.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                script.onload = script.onreadystatechange = null
+                resolve()
+              }
+    
+              Object.keys(attr).forEach(key => {
+                script.setAttribute(key, attr[key])
+              })
+    
+              document.head.appendChild(script)
+            }),
+            addGlobalFn: (key, fn, name = false, parent = window) => {
+                const globalFn = parent.globalFn || {}
+                const keyObj = globalFn[key] || {}
+        
+                if (name && keyObj[name]) return
+        
+                name = name || Object.keys(keyObj).length
+                keyObj[name] = fn
+                globalFn[key] = keyObj
+                parent.globalFn = globalFn
+            },
+        }
+    })()</script><!-- global head--><script>const GLOBAL_CONFIG = {
+    root: '/',
+    algolia: undefined,
+    localsearch: undefined,
+    runtime: '2024-07-22 00:00:00',
+    lazyload: {
+        enable: false,
+        error: '/img/error_load.avif'
+    },
+    copyright: {"limit":50,"author":"作者: HDi","link":"链接: ","source":"来源: HDi - 随便记","info":"著作权归作者所有。 商业转载请联系作者获得授权，非商业转载请注明出处。"},
+    highlight: {"limit":600,"expand":true,"copy":true,"syntax":"highlight.js"},
+    randomlink: false,
+    lang: {"theme":{"dark":"已切换至深色模式","light":"已切换至浅色模式"},"copy":{"success":"复制成功","error":"复制失败"},"backtop":"返回顶部","time":{"day":"天前","hour":"小时前","just":"刚刚","min":"分钟前","month":"个月前"},"day":" 天","f12":"开发者模式已打开，请遵循GPL协议。","totalk":"无需删除空行，直接输入评论即可"},
+    aside: {
+        sayhello: {
+            morning: "✨ 一日之计在于晨",
+            noon: "午休的时间到了",
+            afternoon: "集中精力，攻克难关 🍵",
+            night: "不要太劳累了，早睡更健康",
+            goodnight: "晚安 😴",
+        },
+        sayhello2: ["💻 前端搬砖工","📷 摄影爱好者","💪 佛系健身人","🎨 绘画小能手","🏂 雪道破坏者","🎸 吉他一直落灰","🕙 倾向周密计划","✨ 独处获得能量"],
+        sayhello3: {
+            prefix: '好久不见，',
+            back: '欢迎再次回来，',
+        },
+    },
+    covercolor: {
+        enable: true
+    },
+    comment: false,
+    lightbox: 'fancybox',
+    post_ai: false,
+    right_menu: {"mode":{"dark":"深色模式","light":"浅色模式"},"img_error":"此图片无法复制与下载","music":{"start":"播放音乐","stop":"暂停音乐"}},
+    lure: false,
+    expire: false,
+};</script><!-- page-config head--><script id="config-diff">var PAGE_CONFIG = {
+    is_post: true,
+    is_page: false,
+    is_home: false,
+    page: '',
+    toc: true,
+    comment: false,
+    ai_text: false
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body id="body"><!-- universe--><canvas id="universe"></canvas><!-- background img--><!-- loading--><!-- console--><div id="console"><div class="close-btn" onclick="sco.hideConsole()"><i class="solitude fa-solid fa-xmark"></i></div><div class="console-card-group"><div class="console-card-group-right"><div class="console-card tags" onclick="sco.hideConsole()"><div class="card-content"><div class="author-content-item-tips">标签</div><div class="author-content-item-title">寻找感兴趣的领域</div></div><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div><div class="console-card history" onclick="sco.hideConsole()"><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2026/03/"><span class="card-archive-list-date">2026/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/08/"><span class="card-archive-list-date">2025/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/06/"><span class="card-archive-list-date">2025/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/02/"><span class="card-archive-list-date">2025/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/12/"><span class="card-archive-list-date">2024/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/08/"><span class="card-archive-list-date">2024/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/07/"><span class="card-archive-list-date">2024/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/06/"><span class="card-archive-list-date">2024/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/05/"><span class="card-archive-list-date">2024/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">5</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">2023/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">2023/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/02/"><span class="card-archive-list-date">2023/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/10/"><span class="card-archive-list-date">2022/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/05/"><span class="card-archive-list-date">2022/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/04/"><span class="card-archive-list-date">2022/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/02/"><span class="card-archive-list-date">2022/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/01/"><span class="card-archive-list-date">2022/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/12/"><span class="card-archive-list-date">2021/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/10/"><span class="card-archive-list-date">2021/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/09/"><span class="card-archive-list-date">2021/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/07/"><span class="card-archive-list-date">2021/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/06/"><span class="card-archive-list-date">2021/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/12/"><span class="card-archive-list-date">2020/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">12</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/11/"><span class="card-archive-list-date">2020/11</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/05/"><span class="card-archive-list-date">2020/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/08/"><span class="card-archive-list-date">2019/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/07/"><span class="card-archive-list-date">2019/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/03/"><span class="card-archive-list-date">2019/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/02/"><span class="card-archive-list-date">2019/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/01/"><span class="card-archive-list-date">2019/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/12/"><span class="card-archive-list-date">2018/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/09/"><span class="card-archive-list-date">2018/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">4</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/04/"><span class="card-archive-list-date">2018/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/03/"><span class="card-archive-list-date">2018/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/01/"><span class="card-archive-list-date">2018/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/10/"><span class="card-archive-list-date">2017/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/09/"><span class="card-archive-list-date">2017/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li></ul></div></div></div><div class="button-group"><div class="console-btn-item"><span class="darkmode_switchbutton" onclick="sco.switchDarkMode()" title="昼夜切换"><i class="solitude fa-solid fa-circle-half-stroke"></i></span></div><div class="console-btn-item" id="consoleHideAside"><span class="asideSwitch" onclick="sco.switchHideAside()" title="边栏显示控制"><i class="solitude fa-solid fa-mattress-pillow"></i></span></div><div class="console-btn-item" id="consoleMusic" onclick="sco.musicToggle()"><span class="music-switch" title="音乐开关"><i class="solitude fa-solid fa-compact-disc"></i></span></div></div><div class="console-mask" onclick="sco.hideConsole()"></div></div><!-- sidebar--><div id="sidebar" style="zoom: 1;"><div id="menu-mask" style="display: none;"></div><div id="sidebar-menus"><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">84</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">11</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">52</div></a></div></div></div><span class="sidebar-menu-item-title">功能</span><div class="sidebar-menu-item"><span class="darkmode_switchbutton menu-child" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span>显示模式</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div><span class="sidebar-menu-item-title">标签</span><div class="card-widget card-tags card-archives card-webinfo card-allinfo"><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div></div></div><!-- keyboard--><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav class="show" id="nav"><div id="nav-group"><div id="blog_name"><a id="site-name" href="/" title="返回博客主页"><span class="title">HDi</span><i class="solitude fa-solid fa-home"></i></a></div><div id="page-name-mask"><div id="page-name"><a id="page-name-text" onclick="sco.toTop()">OpenClaw 设计解析（六）：上下文记忆</a></div></div><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div></div><div id="nav-left"></div><div id="nav-right"><div class="nav-button" id="randomPost_button"><a class="site-page" onclick="toRandomPost()" title="随机一篇文章" href="javascript:void(0);"><i class="solitude fa-solid fa-dice-d6"></i></a></div><div class="nav-button" id="nav-console"><a class="console_switchbutton" onclick="sco.showConsole()" title="中控台" href="javascript:void(0);"><label><i class="left"></i><i class="center"></i><i class="right"></i></label></a></div><div class="nav-button" id="nav-totop" onclick="sco.toTop()"><a class="totopbtn"><i class="solitude fa-solid fa-arrow-up"></i><span id="percent">0</span></a></div><div id="toggle-menu"><a class="site-page"><i class="solitude fa-solid fa-bars"></i></a></div></div></div></nav><div class="coverdiv" id="coverdiv"><img class="nolazyload" id="post-cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp" alt="OpenClaw 设计解析（六）：上下文记忆"></div><div id="post-info"><div id="post-firstinfo"><div class="meta-firstline"><a class="post-meta-original" title="该文章为原创文章，注意版权协议">原创</a><span class="post-meta-categories"><a class="post-meta-categories" href="/categories/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a></span><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型</span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw</span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析</span></a></div></div></div></div><h1 class="post-title">OpenClaw 设计解析（六）：上下文记忆</h1><div id="post-meta"><div class="meta-secondline"><span class="post-meta-date" title="发布于 2026-03-13 21:11:00"><i class="post-meta-icon solitude fa-solid fa-calendar-days"></i><time datetime="2026-03-13T13:11:00.000Z">2026-03-13T13:11:00.000Z</time></span><a class="post-meta-pv" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="文章热度"><i class="post-meta-icon solitude fa-solid fa-fire-flame-curved"></i><span id="busuanzi_value_page_pv"><i class="solitude fa-solid fa-spinner"></i></span></a></div></div></div><section class="main-hero-waves-area waves-area"><svg class="waves-svg" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M -160 44 c 30 0 58 -18 88 -18 s 58 18 88 18 s 58 -18 88 -18 s 58 18 88 18 v 44 h -352 Z"></path></defs><g class="parallax"><use href="#gentle-wave" x="48" y="0"></use><use href="#gentle-wave" x="48" y="3"></use><use href="#gentle-wave" x="48" y="5"></use><use href="#gentle-wave" x="48" y="7"></use></g></svg></section></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="OpenClaw-设计解析（六）：上下文记忆"><a href="#OpenClaw-设计解析（六）：上下文记忆" class="headerlink" title="OpenClaw 设计解析（六）：上下文记忆"></a>OpenClaw 设计解析（六）：上下文记忆</h1><blockquote>
+<p>本篇聚焦 OpenClaw 的“上下文记忆”设计：Pi 框架提供什么底座、OpenClaw 在其上做了哪些工程化增强，以及长期记忆插件如何与会话上下文配合。</p>
+</blockquote>
+<p>很多项目一提“记忆”，第一反应是向量数据库或者 RAG。但从 OpenClaw 的源码看，它的“记忆”并不是一个单点模块，而是一个<strong>分层系统</strong>：</p>
+<ul>
+<li><strong>运行前注入什么</strong>：workspace 里的稳定文件、system prompt、skills、tools</li>
+<li><strong>运行中保留什么</strong>：当前 session 的消息历史、工具结果、媒体与系统事件</li>
+<li><strong>快溢出时怎么缩</strong>：history limit、tool result guard、context pruning、auto-compaction</li>
+<li><strong>真正长期保存什么</strong>：<code>MEMORY.md</code>、<code>memory/*.md</code>、以及围绕它们建立的检索索引</li>
+</ul>
+<p>所以更准确地说，OpenClaw 设计的是一套 <strong>“上下文构建 + 会话持久化 + 压缩回收 + 长期召回”</strong> 的记忆体系。</p>
+<hr>
+<h2 id="1-先看全貌：OpenClaw-的记忆不是一层，而是四层"><a href="#1-先看全貌：OpenClaw-的记忆不是一层，而是四层" class="headerlink" title="1. 先看全貌：OpenClaw 的记忆不是一层，而是四层"></a>1. 先看全貌：OpenClaw 的记忆不是一层，而是四层</h2><div class="mermaid">flowchart TD
+    U[&quot;用户输入&lt;br&#x2F;&gt;定时任务 &#x2F; 心跳&quot;] --&gt; R[&quot;定位会话&lt;br&#x2F;&gt;sessionKey &#x2F; sessionId &#x2F; workspace&quot;]
+
+    R --&gt; A[&quot;层 1: 稳定上下文&lt;br&#x2F;&gt;AGENTS &#x2F; SOUL &#x2F; TOOLS&lt;br&#x2F;&gt;USER &#x2F; MEMORY&quot;]
+    R --&gt; B[&quot;层 2: 短期工作记忆&lt;br&#x2F;&gt;Pi SessionManager&lt;br&#x2F;&gt;JSONL 会话历史&quot;]
+    R --&gt; C[&quot;层 3: 窗口治理&lt;br&#x2F;&gt;history limit &#x2F; tool guard&lt;br&#x2F;&gt;pruning &#x2F; compaction&quot;]
+    R --&gt; D[&quot;层 4: 长期记忆召回&lt;br&#x2F;&gt;memory_search &#x2F; memory_get&lt;br&#x2F;&gt;SQLite &#x2F; QMD &#x2F; LanceDB&quot;]
+
+    A --&gt; P[&quot;最终上下文&lt;br&#x2F;&gt;prompt &#x2F; context&quot;]
+    B --&gt; P
+    C --&gt; P
+    D --&gt; P
+
+    P --&gt; LLM[&quot;LLM&lt;br&#x2F;&gt;+ 工具调用循环&quot;]
+    LLM --&gt; W[&quot;写回 transcript&lt;br&#x2F;&gt;memory 文件 &#x2F; 索引&quot;]
+
+    classDef overview font-size:15px,font-weight:bold;
+    class U,R,A,B,C,D,P,LLM,W overview;</div>
+
+<p>这四层各自解决的是不同问题：</p>
+<ul>
+<li><strong>稳定上下文</strong>：让 agent 每次启动都知道“自己是谁、有哪些规则、这个 workspace 是什么”</li>
+<li><strong>短期工作记忆</strong>：让同一个 session 能连续对话、连续做任务</li>
+<li><strong>窗口治理</strong>：在有限 context window 下尽量保持最近且最重要的信息</li>
+<li><strong>长期记忆召回</strong>：把不该常驻 prompt 的信息，改成需要时再检索</li>
+</ul>
+<p>这也是 OpenClaw 很典型的工程思路：<strong>不是把所有记忆都塞进上下文，而是把“常驻”和“按需”拆开。</strong></p>
+<hr>
+<h2 id="2-Pi-提供的底座：Session、持久化、自动压缩"><a href="#2-Pi-提供的底座：Session、持久化、自动压缩" class="headerlink" title="2. Pi 提供的底座：Session、持久化、自动压缩"></a>2. Pi 提供的底座：Session、持久化、自动压缩</h2><p>OpenClaw 的 Agent 运行时建立在 Pi 上，跟“上下文记忆”最相关的是三件事：</p>
+<div class="mermaid">graph LR
+    subgraph Pi[&quot;Pi 框架底座&quot;]
+        P1[&quot;createAgentSession()&lt;br&#x2F;&gt;驱动 LLM &#x2F; tool loop&quot;]
+        P2[&quot;SessionManager&lt;br&#x2F;&gt;JSONL 会话持久化&quot;]
+        P3[&quot;auto_compaction + extension hooks&lt;br&#x2F;&gt;自动压缩 &#x2F; 上下文扩展点&quot;]
+    end
+
+    subgraph OC[&quot;OpenClaw 在上层做的事&quot;]
+        O1[&quot;workspace 文件注入&quot;]
+        O2[&quot;history 清洗与裁剪&quot;]
+        O3[&quot;compaction safeguard &#x2F; pruning&quot;]
+        O4[&quot;memory tools &#x2F; memory plugins&quot;]
+    end
+
+    P1 --&gt; O1
+    P2 --&gt; O2
+    P3 --&gt; O3
+    P1 --&gt; O4</div>
+
+<h3 id="2-1-createAgentSession-：Pi-负责“执行循环”"><a href="#2-1-createAgentSession-：Pi-负责“执行循环”" class="headerlink" title="2.1 createAgentSession()：Pi 负责“执行循环”"></a>2.1 <code>createAgentSession()</code>：Pi 负责“执行循环”</h3><p>OpenClaw 并不自己实现一套 LLM 循环，而是把模型、工具、session manager 交给 Pi：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">sessionManager = <span class="title function_">guardSessionManager</span>(<span class="title class_">SessionManager</span>.<span class="title function_">open</span>(params.<span class="property">sessionFile</span>), ...)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> &#123; session &#125; = <span class="keyword">await</span> <span class="title function_">createAgentSession</span>(&#123;</span><br><span class="line">  <span class="attr">model</span>: params.<span class="property">model</span>,</span><br><span class="line">  <span class="attr">tools</span>: builtInTools,</span><br><span class="line">  <span class="attr">customTools</span>: allCustomTools,</span><br><span class="line">  sessionManager,</span><br><span class="line">  settingsManager,</span><br><span class="line">  resourceLoader,</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">await</span> session.<span class="title function_">prompt</span>(effectivePrompt)</span><br></pre></td></tr></table></figure>
+
+<p>Pi 做的事情是：</p>
+<ul>
+<li>管理消息序列</li>
+<li>执行 tool call 循环</li>
+<li>把消息历史写入 transcript</li>
+<li>在上下文溢出时触发 <code>auto_compaction</code></li>
+</ul>
+<p>也就是说，<strong>Pi 提供“会话引擎”，OpenClaw 提供“上下文策略”。</strong></p>
+<p>如果把一次 <code>session.prompt()</code> 展开，从 OpenClaw 侧能观察到的 Pi 运行时大致是这样：</p>
+<div class="mermaid">sequenceDiagram
+    participant U as OpenClaw
+    participant S as AgentSession
+    participant M as Model
+    participant T as Tool
+    participant SM as SessionManager
+
+    U-&gt;&gt;S: session.prompt(&quot;用户消息&quot;)
+    S-&gt;&gt;SM: 追加 user message
+    S-&gt;&gt;M: 发送 system prompt + history + 当前 user turn
+
+    M--&gt;&gt;S: assistant 文本 &#x2F; toolCall
+    alt 普通回答
+        S-&gt;&gt;SM: 追加 assistant message
+        S--&gt;&gt;U: message_start &#x2F; update &#x2F; end
+    else 需要调用工具
+        S--&gt;&gt;U: tool_execution_start
+        S-&gt;&gt;T: execute(toolName, args)
+        T--&gt;&gt;S: tool result
+        S-&gt;&gt;SM: 追加 toolResult message
+        S--&gt;&gt;U: tool_execution_end
+        S-&gt;&gt;M: 带着 toolResult 继续下一轮
+    end
+
+    opt 上下文过长
+        S--&gt;&gt;U: auto_compaction_start
+        S-&gt;&gt;SM: 写入 compaction entry
+        S--&gt;&gt;U: auto_compaction_end
+        S-&gt;&gt;M: 用压缩后的历史重试
+    end</div>
+
+<h3 id="2-1-1-消息序列是怎么管理的"><a href="#2-1-1-消息序列是怎么管理的" class="headerlink" title="2.1.1 消息序列是怎么管理的"></a>2.1.1 消息序列是怎么管理的</h3><p>从 OpenClaw 的接线方式看，Pi 在 session 内部维护一份当前消息序列，OpenClaw 可以：</p>
+<ul>
+<li>在运行前用 <code>session.agent.replaceMessages()</code> 替换它</li>
+<li>在运行中通过事件流看到 assistant &#x2F; tool &#x2F; compaction 的变化</li>
+<li>在运行结束后直接读取 <code>session.messages</code></li>
+</ul>
+<p>也就是说，<strong>Pi 的 session 里既有一份“当前可见上下文数组”，又有一份落盘 transcript</strong>。OpenClaw 在真正 <code>prompt()</code> 前，会先做：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> limited = <span class="title function_">limitHistoryTurns</span>(validated, ...)</span><br><span class="line">activeSession.<span class="property">agent</span>.<span class="title function_">replaceMessages</span>(limited)</span><br><span class="line"><span class="keyword">await</span> activeSession.<span class="title function_">prompt</span>(effectivePrompt)</span><br></pre></td></tr></table></figure>
+
+<p>所以“消息序列怎么管理”的答案不是简单的“append 到数组”，而是：</p>
+<ol>
+<li>Pi 维护当前会话消息数组</li>
+<li>OpenClaw 在 prompt 前可以重写这份数组</li>
+<li>Pi 在执行中继续向这份序列追加 assistant &#x2F; toolResult &#x2F; compaction 相关消息</li>
+<li>SessionManager 再把它们持久化到 transcript</li>
+</ol>
+<h3 id="2-1-2-tool-call-循环是怎么跑起来的"><a href="#2-1-2-tool-call-循环是怎么跑起来的" class="headerlink" title="2.1.2 tool call 循环是怎么跑起来的"></a>2.1.2 tool call 循环是怎么跑起来的</h3><p>从 <code>subscribeEmbeddedPiSession()</code> 订阅的事件类型可以反推出 Pi 的循环形态：</p>
+<ul>
+<li><code>message_start / message_update / message_end</code></li>
+<li><code>tool_execution_start / tool_execution_end</code></li>
+<li><code>auto_compaction_start / auto_compaction_end</code></li>
+<li><code>agent_start / agent_end</code></li>
+</ul>
+<p>这说明 Pi 的执行模型不是“模型只回答一次”，而是一个标准的 agent loop：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">  response = <span class="title function_">askModel</span>(messages, tools)</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (response.<span class="property">includesToolCall</span>) &#123;</span><br><span class="line">    result = <span class="title function_">runTool</span>(response.<span class="property">toolName</span>, response.<span class="property">args</span>)</span><br><span class="line">    messages.<span class="title function_">push</span>(<span class="title function_">toolResult</span>(result))</span><br><span class="line">    <span class="keyword">continue</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">break</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>OpenClaw 在这个循环里主要做两件事：</p>
+<ul>
+<li>提供工具实现与策略过滤</li>
+<li>订阅运行时事件，把 Pi 的内部状态翻译成“用户可见回复 &#x2F; typing &#x2F; tool summary &#x2F; compaction 通知”</li>
+</ul>
+<p>所以 <code>createAgentSession()</code> 的价值，不只是“创建一个 session”，而是把 <strong>LLM 对话、tool dispatch、消息持久化、自动重试</strong> 几件事绑成了一个完整状态机。</p>
+<h3 id="2-1-3-transcript-到底是什么"><a href="#2-1-3-transcript-到底是什么" class="headerlink" title="2.1.3 transcript 到底是什么"></a>2.1.3 transcript 到底是什么</h3><p>这里的 transcript 不是“聊天记录字符串”，而是 Pi <code>SessionManager</code> 管理的 <strong>JSONL 会话文件</strong>。</p>
+<p>OpenClaw 的参考文档里把它描述得很清楚：第一行是 session header，后面每一行是一个 entry。常见 entry 类型有：</p>
+<ul>
+<li><code>message</code></li>
+<li><code>custom_message</code></li>
+<li><code>custom</code></li>
+<li><code>compaction</code></li>
+<li><code>branch_summary</code></li>
+</ul>
+<p>所以 transcript 的本质是：</p>
+<ul>
+<li><strong>可追加</strong></li>
+<li><strong>可回放</strong></li>
+<li><strong>可 compaction</strong></li>
+<li><strong>不是为了给人直接读的 Markdown，而是运行时状态日志</strong></li>
+</ul>
+<p>这也是为什么 OpenClaw 把“长期记忆文件”和“session transcript”分开设计。二者都能存信息，但职责完全不同。</p>
+<p>实际落盘位置通常在：</p>
+<ul>
+<li><code>~/.openclaw/agents/&lt;agentId&gt;/sessions/sessions.json</code>：session 元数据索引</li>
+<li><code>~/.openclaw/agents/&lt;agentId&gt;/sessions/&lt;sessionId&gt;.jsonl</code>：真正的 transcript</li>
+<li>Telegram topic 之类的会话还可能是 <code>.../&lt;sessionId&gt;-topic-&lt;threadId&gt;.jsonl</code></li>
+</ul>
+<p>这里要先强调一下：</p>
+<ul>
+<li>上面说的 <code>sessions.json</code> 是<strong>索引</strong></li>
+<li>下面马上要给出的 JSONL 例子是<strong>真正的 transcript</strong></li>
+</ul>
+<p>也就是说，<code>sessions.json</code> 负责告诉你“当前这个 <code>sessionKey</code> 对应哪个 <code>sessionId</code> &#x2F; <code>sessionFile</code>”；而 <code>*.jsonl</code> 才是那段对话真正的历史。</p>
+<p>一个简化后的索引例子大概像这样：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;agent:main:telegram:dm:123456&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sessionId&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sess_abc123&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;sessionFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;~/.openclaw/agents/main/sessions/sess_abc123.jsonl&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;updatedAt&quot;</span><span class="punctuation">:</span> <span class="number">1773653400000</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;chatType&quot;</span><span class="punctuation">:</span> <span class="string">&quot;direct&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;displayName&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Telegram DM 123456&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;compactionCount&quot;</span><span class="punctuation">:</span> <span class="number">1</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>这个索引条目的意思不是“消息内容存在这里”，而是：</p>
+<ul>
+<li>路由键 <code>agent:main:telegram:dm:123456</code></li>
+<li>当前指向的会话文件是 <code>sess_abc123.jsonl</code></li>
+<li>当下一条来自这个 DM 的消息到达时，OpenClaw 会继续往这份 transcript 上追加</li>
+</ul>
+<p>如果这个 session 之后发生了 <code>/new</code>、daily reset，或者 thread&#x2F;topic fork，变化的通常不是旧 transcript 被改名重写，而是 <strong><code>sessions.json</code> 里的指针改了</strong>：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;agent:main:telegram:dm:123456&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sessionId&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sess_def456&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;sessionFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;~/.openclaw/agents/main/sessions/sess_def456.jsonl&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;updatedAt&quot;</span><span class="punctuation">:</span> <span class="number">1773660000000</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>这时：</p>
+<ul>
+<li><code>sess_abc123.jsonl</code> 仍然是旧历史</li>
+<li><code>sess_def456.jsonl</code> 成为这个 <code>sessionKey</code> 当前继续写入的新 transcript</li>
+</ul>
+<p>如果把一个真实 transcript 简化一下，大致会长这样：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;session&quot;</span><span class="punctuation">,</span><span class="attr">&quot;version&quot;</span><span class="punctuation">:</span><span class="number">7</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;sess_abc123&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:00:00.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;cwd&quot;</span><span class="punctuation">:</span><span class="string">&quot;/workspace/project&quot;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;message&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;m1&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parentId&quot;</span><span class="punctuation">:</span><span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:00:03.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;user&quot;</span><span class="punctuation">,</span><span class="attr">&quot;content&quot;</span><span class="punctuation">:</span><span class="string">&quot;帮我排查一下为什么服务 500 了&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;message&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;m2&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parentId&quot;</span><span class="punctuation">:</span><span class="string">&quot;m1&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:00:05.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;assistant&quot;</span><span class="punctuation">,</span><span class="attr">&quot;content&quot;</span><span class="punctuation">:</span><span class="punctuation">[</span><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;toolCall&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;call_1&quot;</span><span class="punctuation">,</span><span class="attr">&quot;name&quot;</span><span class="punctuation">:</span><span class="string">&quot;read&quot;</span><span class="punctuation">,</span><span class="attr">&quot;arguments&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;path&quot;</span><span class="punctuation">:</span><span class="string">&quot;logs/server.log&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;message&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;m3&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parentId&quot;</span><span class="punctuation">:</span><span class="string">&quot;m2&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:00:05.200Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;toolResult&quot;</span><span class="punctuation">,</span><span class="attr">&quot;toolCallId&quot;</span><span class="punctuation">:</span><span class="string">&quot;call_1&quot;</span><span class="punctuation">,</span><span class="attr">&quot;toolName&quot;</span><span class="punctuation">:</span><span class="string">&quot;read&quot;</span><span class="punctuation">,</span><span class="attr">&quot;content&quot;</span><span class="punctuation">:</span><span class="punctuation">[</span><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;text&quot;</span><span class="punctuation">,</span><span class="attr">&quot;text&quot;</span><span class="punctuation">:</span><span class="string">&quot;...日志内容...&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;message&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;m4&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parentId&quot;</span><span class="punctuation">:</span><span class="string">&quot;m3&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:00:07.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;assistant&quot;</span><span class="punctuation">,</span><span class="attr">&quot;content&quot;</span><span class="punctuation">:</span><span class="string">&quot;看起来是数据库连接超时。&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;compaction&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;comp_1&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:30:00.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;summary&quot;</span><span class="punctuation">:</span><span class="string">&quot;用户在排查服务 500，已确认数据库连接超时，最近改动集中在 API 层。&quot;</span><span class="punctuation">,</span><span class="attr">&quot;firstKeptEntryId&quot;</span><span class="punctuation">:</span><span class="string">&quot;m20&quot;</span><span class="punctuation">,</span><span class="attr">&quot;tokensBefore&quot;</span><span class="punctuation">:</span><span class="number">182340</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;type&quot;</span><span class="punctuation">:</span><span class="string">&quot;message&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="string">&quot;m21&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parentId&quot;</span><span class="punctuation">:</span><span class="string">&quot;m20&quot;</span><span class="punctuation">,</span><span class="attr">&quot;timestamp&quot;</span><span class="punctuation">:</span><span class="string">&quot;2026-03-16T09:31:10.000Z&quot;</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;user&quot;</span><span class="punctuation">,</span><span class="attr">&quot;content&quot;</span><span class="punctuation">:</span><span class="string">&quot;继续，把连接池配置也检查一下&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>这个例子里最关键的点有 4 个：</p>
+<ol>
+<li><strong>它不是一个 JSON 数组，而是 JSONL</strong><br>每一行都是一个独立 JSON 对象，追加和修复都更方便。</li>
+<li><strong>真正的 user &#x2F; assistant &#x2F; toolResult 在 <code>message</code> 字段里</strong><br>外层的 <code>type / id / parentId / timestamp</code> 更像日志 envelope。</li>
+<li><strong><code>id + parentId</code> 让 transcript 不是纯线性链表，而是可分支的树</strong><br>这也是为什么 Pi 能做 branch &#x2F; reset &#x2F; compaction。</li>
+<li><strong><code>compaction</code> 不是一条普通消息</strong><br>它是一条专门的持久化摘要 entry，后续重建上下文时会参与“历史折叠”。</li>
+</ol>
+<p>为了可读性，上面的示例省略了不少实际字段，比如 <code>api</code>、<code>provider</code>、<code>model</code>、<code>usage</code> 等。但只要记住这个骨架就够了：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">session header</span><br><span class="line">-&gt; <span class="title function_">message</span>(user)</span><br><span class="line">-&gt; <span class="title function_">message</span>(assistant/toolCall)</span><br><span class="line">-&gt; <span class="title function_">message</span>(toolResult)</span><br><span class="line">-&gt; <span class="title function_">message</span>(assistant)</span><br><span class="line">-&gt; compaction?</span><br><span class="line">-&gt; more messages...</span><br></pre></td></tr></table></figure>
+
+<p>所以 transcript 本质上不是“给人看的聊天记录”，而是 <strong>Pi 用来重建 session 上下文的一份 append-only 运行日志</strong>。</p>
+<p>如果把索引和真正 transcript 的关系压成一句话，就是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sessionKey</span><br><span class="line">-&gt; sessions.<span class="property">json</span>[sessionKey]</span><br><span class="line">-&gt; sessionId / sessionFile</span><br><span class="line">-&gt; 对应的 &lt;sessionId&gt;.<span class="property">jsonl</span></span><br><span class="line">-&gt; <span class="title class_">Pi</span> 用它重建当前 session context</span><br></pre></td></tr></table></figure>
+
+<p>这也是为什么 OpenClaw 会把 <code>sessions.json</code> 和 <code>*.jsonl</code> 分开：</p>
+<ul>
+<li><code>sessions.json</code> 适合快速查“当前该接哪份历史”</li>
+<li><code>*.jsonl</code> 适合 append-only 地存“这份历史本身长什么样”</li>
+</ul>
+<p>这里还有一个很容易误解的点：<code>/new</code>、<code>/reset</code> 之后，旧 transcript <strong>不会再被当前 <code>sessionKey</code> 自动接上继续跑</strong>，但这不等于它立刻从磁盘上消失了。</p>
+<p>更准确地说，reset 发生时会有两步：</p>
+<ol>
+<li><code>sessions.json</code> 把当前 <code>sessionKey</code> 改指向新的 <code>sessionId/sessionFile</code></li>
+<li>旧 transcript 被归档成 <code>*.jsonl.reset.&lt;timestamp&gt;</code></li>
+</ol>
+<p>可以把它理解成：</p>
+<div class="mermaid">flowchart LR
+    K[&quot;sessionKey&lt;br&#x2F;&gt;agent:main:telegram:dm:123456&quot;] --&gt; S1[&quot;sessions.json&lt;br&#x2F;&gt;sessionId&#x3D;sess_abc123&quot;]
+    S1 --&gt; T1[&quot;sess_abc123.jsonl&lt;br&#x2F;&gt;旧 transcript&quot;]
+
+    R[&quot;&#x2F;new or &#x2F;reset&quot;] --&gt; S2[&quot;sessions.json&lt;br&#x2F;&gt;sessionId&#x3D;sess_def456&quot;]
+    R --&gt; A[&quot;sess_abc123.jsonl.reset.2026-03-16T09-40-00.000Z&lt;br&#x2F;&gt;归档 transcript&quot;]
+    S2 --&gt; T2[&quot;sess_def456.jsonl&lt;br&#x2F;&gt;新 transcript&quot;]</div>
+
+<p>例如，reset 前索引可能是：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;agent:main:telegram:dm:123456&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sessionId&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sess_abc123&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;sessionFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;~/.openclaw/agents/main/sessions/sess_abc123.jsonl&quot;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>reset 后会变成：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;agent:main:telegram:dm:123456&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sessionId&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sess_def456&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;sessionFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;~/.openclaw/agents/main/sessions/sess_def456.jsonl&quot;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>与此同时，旧文件通常不会直接删除，而是变成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~/.openclaw/agents/main/sessions/sess_abc123.jsonl.reset.2026-03-16T09-40-00.000Z</span><br></pre></td></tr></table></figure>
+
+<p>所以这里最准确的理解是：</p>
+<ul>
+<li><strong>对当前运行时来说</strong>：旧 transcript 已经退出主路径，后续 prompt 不会再自动重建它</li>
+<li><strong>对磁盘存档来说</strong>：旧 transcript 往往还在，只是已经变成 reset archive</li>
+</ul>
+<p>这些 reset archive 后续还可能被 maintenance 清理；默认保留期跟 <code>pruneAfter</code> 对齐，而不是永久保存。</p>
+<h3 id="2-1-4-auto-compaction-的结果是什么"><a href="#2-1-4-auto-compaction-的结果是什么" class="headerlink" title="2.1.4 auto_compaction 的结果是什么"></a>2.1.4 auto_compaction 的结果是什么</h3><p>这个问题非常关键。auto-compaction 的结果不是“临时生成一段摘要然后继续聊”，而是：</p>
+<ol>
+<li>把老历史总结成一个 <strong>持久化的 <code>compaction</code> entry</strong></li>
+<li>记录 compaction point，例如 <code>firstKeptEntryId</code></li>
+<li>后续会话不再重放被压缩掉的老消息，而是重放：<ul>
+<li>compaction summary</li>
+<li><code>firstKeptEntryId</code> 之后的较新消息</li>
+</ul>
+</li>
+<li>Pi 再基于压缩后的上下文重试当前请求</li>
+</ol>
+<p>也就是说，compaction 改变的不是“一次请求的 prompt”，而是<strong>这个 session 之后的历史形态</strong>。</p>
+<p>如果只是“临时生成一段摘要继续聊”，那它应该只影响<strong>当前这一次模型请求</strong>：</p>
+<ul>
+<li>这次请求前，临时拼一段 summary</li>
+<li>请求结束后，磁盘 transcript 不变</li>
+<li>下一轮 <code>buildSessionContext()</code> 还是会把原来的老消息整段重放回来</li>
+</ul>
+<p>Pi 的 auto-compaction 不是这种临时 patch。它更像是：</p>
+<ul>
+<li>在 transcript 里追加一条 <code>compaction</code> entry</li>
+<li>记住 cut point，例如 <code>firstKeptEntryId = m80</code></li>
+<li>以后重建上下文时，不再原样重放 <code>m1...m79</code></li>
+<li>而是重放“<code>m1...m79</code> 的摘要 + <code>m80</code> 之后的新消息”</li>
+</ul>
+<p>可以把“压缩前 &#x2F; 压缩后，未来 turn 看见什么”理解成：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">压缩前：</span><br><span class="line">m1 + m2 + ... + m79 + m80 + ... + m100</span><br><span class="line"></span><br><span class="line">压缩后，未来 turn 可见：</span><br><span class="line"><span class="title function_">compactionSummary</span>(m1...m79) + m80 + ... + m100</span><br></pre></td></tr></table></figure>
+
+<p>这里特别要注意两层对象：</p>
+<ul>
+<li><strong>磁盘 transcript</strong> 仍然是 append-only 日志</li>
+<li><strong>未来 prompt 的可见上下文</strong> 已经改成“summary + kept suffix”</li>
+</ul>
+<p>也就是说，compaction 的持久性体现在：<strong>未来怎么重建上下文变了</strong>，而不只是“这一次 prompt 前多塞了一段字”。</p>
+<div class="mermaid">flowchart LR
+    A[&quot;旧 transcript&lt;br&#x2F;&gt;m1 ... m79 m80 ... m100&quot;] --&gt; B[&quot;Pi auto-compaction&quot;]
+    B --&gt; C[&quot;追加 compaction entry&lt;br&#x2F;&gt;summary + firstKeptEntryId&#x3D;m80&quot;]
+    C --&gt; D[&quot;未来 buildSessionContext()&quot;]
+    D --&gt; E[&quot;送给模型的上下文&lt;br&#x2F;&gt;summary(m1...m79) + m80...m100&quot;]</div>
+
+<p>这也是 OpenClaw 为什么会围绕它做那么多增强：</p>
+<ul>
+<li>compaction 前做 memory flush</li>
+<li>compaction 时做 safeguard</li>
+<li>compaction 后补 post-compaction context refresh</li>
+</ul>
+<p>因为它不是一个临时优化，而是一次真正的“会话记忆重写”。</p>
+<h3 id="2-1-5-既然-Pi-会-auto-compaction，为什么-OpenClaw-还要自己裁剪"><a href="#2-1-5-既然-Pi-会-auto-compaction，为什么-OpenClaw-还要自己裁剪" class="headerlink" title="2.1.5 既然 Pi 会 auto-compaction，为什么 OpenClaw 还要自己裁剪"></a>2.1.5 既然 Pi 会 auto-compaction，为什么 OpenClaw 还要自己裁剪</h3><p>这里很容易误解成“Pi 没考虑上下文超限，所以 OpenClaw 只好自己补”。更准确的说法是：</p>
+<ul>
+<li><strong>Pi 已经考虑了上下文超限</strong></li>
+<li><strong>OpenClaw 额外做的是更前置、更业务化的窗口治理</strong></li>
+</ul>
+<p>Pi 在运行时的主方案是 <code>auto_compaction</code>：</p>
+<ul>
+<li>模型已经返回 context overflow 错误时，先 compact，再 retry</li>
+<li>没有报错，但估算 token 已经接近 <code>contextWindow - reserveTokens</code> 时，也会自动 compact</li>
+</ul>
+<p>所以 Pi 的职责更像是：<strong>保证 session 在上下文快满或已经溢出时，还能继续跑下去。</strong></p>
+<p>而 OpenClaw 自己做 <code>limitHistoryTurns()</code>、tool-result guard、context pruning，解决的是另一类问题：</p>
+<ul>
+<li>DM 和群聊的上下文策略不同</li>
+<li>某些消息平台一个 thread &#x2F; topic 就是一个 session，历史天然会越积越长</li>
+<li>真正把窗口打爆的常常不是对话，而是超大的工具输出、日志、网页内容</li>
+</ul>
+<p>也就是说，OpenClaw 不是在重复 Pi 的 compaction，而是在做一层 <strong>“能不 compact，就先别 compact”</strong> 的前置治理。</p>
+<p>这样做有两个工程上的好处：</p>
+<ol>
+<li><strong>更便宜</strong>：history limit 或 tool-result truncation 不需要额外跑一次摘要模型</li>
+<li><strong>更稳定</strong>：compaction 是持久化摘要，天然有信息损失；越晚触发，越能保住原始细节</li>
+</ol>
+<p>因此两层能力的边界可以概括成：</p>
+<ul>
+<li><strong>Pi</strong>：负责“上下文满了之后怎么自动压缩并继续执行”</li>
+<li><strong>OpenClaw</strong>：负责“在消息网关这个产品里，哪些历史应该更早被裁掉，尽量减少进入 compaction 的次数”</li>
+</ul>
+<h3 id="2-2-SessionManager：Pi-负责把短期记忆落到磁盘"><a href="#2-2-SessionManager：Pi-负责把短期记忆落到磁盘" class="headerlink" title="2.2 SessionManager：Pi 负责把短期记忆落到磁盘"></a>2.2 <code>SessionManager</code>：Pi 负责把短期记忆落到磁盘</h3><p>Pi 的 <code>SessionManager</code> 是整个短期记忆的核心。OpenClaw 用它读取和写入 <code>*.jsonl</code> transcript，而不是自己手搓一套会话格式。</p>
+<p>从设计上看，这有两个好处：</p>
+<ul>
+<li><strong>会话历史是磁盘持久化的</strong>，不是进程内存里的临时数组</li>
+<li><strong>compaction 是 transcript 级别的持久操作</strong>，不是一次运行内的临时摘要</li>
+</ul>
+<p>OpenClaw 在 Pi 的 <code>SessionManager</code> 外面又包了一层 <code>guardSessionManager()</code>，主要做两件事：</p>
+<ul>
+<li>给 user message 打上 provenance，避免跨 session 注入的信息混淆来源</li>
+<li>在 tool result 落盘前做持久化保护与 hook 扩展</li>
+</ul>
+<h3 id="2-3-Pi-的-extension-机制：给-OpenClaw-留了“上下文改造点”"><a href="#2-3-Pi-的-extension-机制：给-OpenClaw-留了“上下文改造点”" class="headerlink" title="2.3 Pi 的 extension 机制：给 OpenClaw 留了“上下文改造点”"></a>2.3 Pi 的 extension 机制：给 OpenClaw 留了“上下文改造点”</h3><p>Pi 不只是提供 <code>prompt()</code>，还提供了 compaction 和 context 阶段的 extension hook。OpenClaw 正是靠这个能力，外挂了两类关键能力：</p>
+<ul>
+<li>**<code>compaction-safeguard</code>**：增强 compaction 摘要质量</li>
+<li>**<code>context-pruning</code>**：对老旧 tool result 做裁剪</li>
+</ul>
+<p>这点很关键。OpenClaw 没有 fork 一套 Pi，而是在 Pi 的 extension API 上做“外挂增强”。这也是它工程上比较成熟的地方。</p>
+<hr>
+<h2 id="3-OpenClaw-如何组装一次运行的上下文"><a href="#3-OpenClaw-如何组装一次运行的上下文" class="headerlink" title="3. OpenClaw 如何组装一次运行的上下文"></a>3. OpenClaw 如何组装一次运行的上下文</h2><p>真正送给模型的上下文，不是直接拿 session 历史拼起来，而是经过了一整条装配链。</p>
+<div class="mermaid">flowchart TD
+    M[&quot;1. 收到用户消息&quot;] --&gt; S[&quot;2. 定位会话&lt;br&#x2F;&gt;sessionKey &#x2F; sessionId &#x2F; workspace&quot;]
+
+    S --&gt; B
+    S --&gt; H
+
+    subgraph Stable[&quot;稳定上下文&quot;]
+        direction TB
+        B[&quot;3. 读取 workspace 上下文&lt;br&#x2F;&gt;规则 &#x2F; 身份 &#x2F; 偏好 &#x2F; bootstrap files&quot;]
+        P[&quot;5. 生成 system prompt&quot;]
+        B --&gt; P
+    end
+
+    subgraph History[&quot;短期历史&quot;]
+        direction TB
+        H[&quot;4. 读取 transcript 历史&quot;]
+        C[&quot;6. 清洗成本轮可见工作集&lt;br&#x2F;&gt;修格式 &#x2F; provider 校验 &#x2F; 限制长度&quot;]
+        X[&quot;7. 替换 session 当前 messages&quot;]
+        H --&gt; C --&gt; X
+    end
+
+    P --&gt; K[&quot;8. hooks 可再补上下文&lt;br&#x2F;&gt;prependContext &#x2F; 覆盖 system prompt&quot;]
+    X --&gt; K
+    K --&gt; F[&quot;9. 交给 Pi 开始&lt;br&#x2F;&gt;prompt &#x2F; tool loop&quot;]
+
+    classDef assembly font-size:15px,font-weight:bold;
+    class M,S,B,H,P,C,X,K,F assembly;</div>
+
+<p>如果想和源码对照，这几步大致对应：</p>
+<ul>
+<li>第 3 步：<code>resolveBootstrapContextForRun()</code></li>
+<li>第 4 步：<code>SessionManager.open()</code></li>
+<li>第 5 步：<code>buildEmbeddedSystemPrompt()</code></li>
+<li>第 6 步：<code>sanitizeSessionHistory()</code> &#x2F; <code>validate*Turns()</code> &#x2F; <code>limitHistoryTurns()</code></li>
+<li>第 7 步：<code>session.agent.replaceMessages()</code></li>
+<li>第 8 步：<code>before_prompt_build</code> &#x2F; <code>before_agent_start</code></li>
+</ul>
+<h3 id="3-1-稳定上下文来自-workspace-bootstrap-files"><a href="#3-1-稳定上下文来自-workspace-bootstrap-files" class="headerlink" title="3.1 稳定上下文来自 workspace bootstrap files"></a>3.1 稳定上下文来自 workspace bootstrap files</h3><p>OpenClaw 会先读 workspace 里的固定文件，再把它们注入 system prompt 的 <code>Project Context</code>。源码里这条链路是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> &#123; bootstrapFiles, contextFiles &#125; = <span class="keyword">await</span> <span class="title function_">resolveBootstrapContextForRun</span>(&#123;</span><br><span class="line">  <span class="attr">workspaceDir</span>: effectiveWorkspace,</span><br><span class="line">  <span class="attr">sessionKey</span>: params.<span class="property">sessionKey</span>,</span><br><span class="line">  <span class="attr">config</span>: params.<span class="property">config</span>,</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> systemPrompt = <span class="title function_">buildEmbeddedSystemPrompt</span>(&#123;</span><br><span class="line">  contextFiles,</span><br><span class="line">  skillsPrompt,</span><br><span class="line">  tools,</span><br><span class="line">  runtimeInfo,</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>这里最重要的不是代码，而是设计决策：</p>
+<ul>
+<li>OpenClaw 把 <strong><code>AGENTS.md / SOUL.md / TOOLS.md / IDENTITY.md / USER.md / HEARTBEAT.md / BOOTSTRAP.md</code></strong> 当成稳定上下文</li>
+<li>如果存在，也会把 <strong><code>MEMORY.md</code> &#x2F; <code>memory.md</code></strong> 当成 bootstrap 文件注入</li>
+<li>但 <strong><code>memory/*.md</code> 日志不会自动全量注入</strong>，它们主要通过 memory tools 按需读取</li>
+<li>subagent &#x2F; cron 会切到更轻量的 prompt 模式，bootstrap 文件也会收缩到一个最小允许集合，避免把主会话上下文整包带进子任务</li>
+</ul>
+<p>这就形成了一个非常清晰的边界：</p>
+<ul>
+<li><strong>适合常驻 prompt 的内容</strong>：规则、身份、长期稳定偏好</li>
+<li><strong>适合按需召回的内容</strong>：日记、历史记录、细节证据</li>
+</ul>
+<h3 id="3-2-OpenClaw-对-bootstrap-注入有明确的-token-预算意识"><a href="#3-2-OpenClaw-对-bootstrap-注入有明确的-token-预算意识" class="headerlink" title="3.2 OpenClaw 对 bootstrap 注入有明确的 token 预算意识"></a>3.2 OpenClaw 对 bootstrap 注入有明确的 token 预算意识</h3><p>OpenClaw 并不是“把文件原样全塞进去”。它会对 bootstrap 文件做双重限制：</p>
+<ul>
+<li><strong>单文件上限</strong>：<code>bootstrapMaxChars</code></li>
+<li><strong>总注入上限</strong>：<code>bootstrapTotalMaxChars</code></li>
+</ul>
+<p>超过预算会截断，并在 prompt 里留下提示标记。这一点非常工程化，因为真实项目里 <code>TOOLS.md</code>、<code>MEMORY.md</code> 很容易无限膨胀。</p>
+<h3 id="3-3-历史消息不会直接照搬，而是先清洗再替换"><a href="#3-3-历史消息不会直接照搬，而是先清洗再替换" class="headerlink" title="3.3 历史消息不会直接照搬，而是先清洗再替换"></a>3.3 历史消息不会直接照搬，而是先清洗再替换</h3><p>会话历史在真正参与推理前，会经过一轮 sanitation：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> prior = <span class="title function_">sanitizeSessionHistory</span>(...)</span><br><span class="line"><span class="keyword">const</span> validated = <span class="title function_">validateGeminiTurns</span>(<span class="title function_">validateAnthropicTurns</span>(prior))</span><br><span class="line"><span class="keyword">const</span> truncated = <span class="title function_">limitHistoryTurns</span>(validated, <span class="title function_">getHistoryLimitFromSessionKey</span>(...))</span><br><span class="line">activeSession.<span class="property">agent</span>.<span class="title function_">replaceMessages</span>(truncated)</span><br></pre></td></tr></table></figure>
+
+<p>这里的“<strong>本轮可见工作集</strong>”，可以先用一句最短的话理解：</p>
+<blockquote>
+<p><strong>它就是这次运行真正准备交给模型的那份 history 工作副本。</strong></p>
+</blockquote>
+<p>要注意它和 transcript 不是一个东西：</p>
+<ul>
+<li><strong>transcript</strong>：磁盘上的完整会话日志</li>
+<li><strong>本轮可见工作集</strong>：OpenClaw 从 transcript 重建、清洗、裁剪后，塞回 <code>activeSession.messages</code> 的那份内存数组</li>
+</ul>
+<p>再严格一点说：</p>
+<ul>
+<li><code>replaceMessages(limited)</code> 改的是“这轮运行的可见历史”</li>
+<li>当前用户这条新消息、hook 注入的 prependContext、system prompt，则会在后面一起组成<strong>最终模型输入</strong></li>
+</ul>
+<p>所以它更像是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">最终模型输入 = systemPrompt + 本轮可见工作集 + 当前用户消息 + prompt 级附加上下文</span><br></pre></td></tr></table></figure>
+
+<p>这一步具体做的事情，按顺序可以拆成 4 层：</p>
+<ol>
+<li><strong>先把 transcript 里明显不适合继续复用的内容修一遍</strong><ul>
+<li>给跨 session 注入的 user message 打 provenance 标记</li>
+<li>清洗历史图片块、toolCall id、签名等 provider 敏感字段</li>
+<li>对不兼容的 provider 去掉旧的 thinking &#x2F; reasoning block</li>
+</ul>
+</li>
+<li><strong>把工具调用历史修成“还能继续发给下一个模型请求”的形状</strong><ul>
+<li>清理非法 toolCall 输入</li>
+<li>丢掉不允许的工具名</li>
+<li>修复 toolCall &#x2F; toolResult 配对</li>
+<li>去掉重复或孤儿 toolResult</li>
+<li>必要时补 synthetic error toolResult</li>
+</ul>
+</li>
+<li><strong>把 provider 不接受的 turn 结构修正掉</strong><ul>
+<li>Gemini 路径会合并连续 assistant turn</li>
+<li>Anthropic 路径会合并连续 user turn</li>
+<li>OpenAI Responses 路径还会降级旧 reasoning&#x2F;function-call 结构</li>
+</ul>
+</li>
+<li><strong>最后才做场景化裁剪</strong><ul>
+<li>根据 <code>sessionKey</code> 判断这是 DM、group 还是 channel</li>
+<li>只保留最近 N 个 user turn</li>
+<li>截断后再跑一次 tool pairing repair，防止留下孤儿 toolResult</li>
+</ul>
+</li>
+</ol>
+<p>如果把它翻译成更偏“人话”的效果，其实就是：</p>
+<ul>
+<li><strong>把坏历史修合法</strong></li>
+<li><strong>把不同 provider 不接受的结构修兼容</strong></li>
+<li><strong>把不值得长期占窗口的旧历史裁掉</strong></li>
+<li><strong>得到一份这轮可以放心继续推理的 history</strong></li>
+</ul>
+<p>可以用一个极简前后对比理解：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">原始 transcript 重建出来的历史：</span><br><span class="line">user</span><br><span class="line"><span class="title function_">assistant</span>(toolCall call_1)</span><br><span class="line"><span class="title function_">toolResult</span>(call_1)</span><br><span class="line">assistant</span><br><span class="line">user</span><br><span class="line"><span class="title function_">toolResult</span>(call_older) <span class="comment">// 截断后留下的孤儿</span></span><br><span class="line"></span><br><span class="line">清洗后的本轮可见工作集：</span><br><span class="line">user</span><br><span class="line"><span class="title function_">assistant</span>(toolCall call_1)</span><br><span class="line"><span class="title function_">toolResult</span>(call_1)</span><br><span class="line">assistant</span><br><span class="line">user</span><br></pre></td></tr></table></figure>
+
+<p>这一步体现了 OpenClaw 在 Pi 之上的工程增强：</p>
+<ul>
+<li>修复历史 transcript 中的坏格式</li>
+<li>针对不同 provider 做 turn 校验</li>
+<li>针对 DM &#x2F; group &#x2F; channel 应用不同 history limit</li>
+<li>用 <code>replaceMessages()</code> 把 Pi 默认历史替换成“适合本次运行的历史”</li>
+</ul>
+<p>Pi 给的是“可执行会话”，OpenClaw 在上面补了一层 <strong>“面向生产环境的上下文清洗器”</strong>。</p>
+<h3 id="3-4-Hook-可以在-prompt-最后一步插入上下文"><a href="#3-4-Hook-可以在-prompt-最后一步插入上下文" class="headerlink" title="3.4 Hook 可以在 prompt 最后一步插入上下文"></a>3.4 Hook 可以在 prompt 最后一步插入上下文</h3><p>在真正 <code>session.prompt()</code> 前，OpenClaw 还会跑 <code>before_prompt_build</code> &#x2F; <code>before_agent_start</code> hook：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> hookResult = <span class="keyword">await</span> <span class="title function_">resolvePromptBuildHookResult</span>(...)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (hookResult?.<span class="property">prependContext</span>) &#123;</span><br><span class="line">  effectivePrompt = <span class="string">`<span class="subst">$&#123;hookResult.prependContext&#125;</span>\n\n<span class="subst">$&#123;params.prompt&#125;</span>`</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (hookResult?.<span class="property">systemPrompt</span>) &#123;</span><br><span class="line">  <span class="title function_">applySystemPromptOverrideToSession</span>(activeSession, hookResult.<span class="property">systemPrompt</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味着 OpenClaw 的上下文并不是静态的。插件可以在最后一刻：</p>
+<ul>
+<li>给用户 prompt 前面补一段上下文</li>
+<li>覆盖 system prompt</li>
+<li>在不修改 Pi 的情况下插入额外记忆</li>
+</ul>
+<p>这就是为什么 OpenClaw 的“记忆系统”不能只看 memory 目录，它其实和 hooks、plugins、prompt builder 是绑在一起的。</p>
+<hr>
+<h2 id="4-短期记忆：Session-就是-Agent-的工作记忆"><a href="#4-短期记忆：Session-就是-Agent-的工作记忆" class="headerlink" title="4. 短期记忆：Session 就是 Agent 的工作记忆"></a>4. 短期记忆：Session 就是 Agent 的工作记忆</h2><p>OpenClaw 的短期记忆核心不是数据库，而是 <strong>sessionKey -&gt; SessionEntry -&gt; transcript JSONL</strong>。</p>
+<div class="mermaid">flowchart LR
+    K[&quot;sessionKey&lt;br&#x2F;&gt;对话隔离粒度&quot;] --&gt; E[&quot;sessions.json 中的 SessionEntry&lt;br&#x2F;&gt;当前 sessionId &#x2F; tokens &#x2F; compactionCount&quot;]
+    E --&gt; T[&quot;&lt;sessionId&gt;.jsonl&lt;br&#x2F;&gt;真实会话历史&quot;]
+    T --&gt; L[&quot;Pi SessionManager.buildSessionContext()&quot;]
+    L --&gt; C[&quot;本次运行看到的上下文&quot;]</div>
+
+<h3 id="4-1-为什么要分成-sessions-json-和-jsonl-两层"><a href="#4-1-为什么要分成-sessions-json-和-jsonl-两层" class="headerlink" title="4.1 为什么要分成 sessions.json 和 *.jsonl 两层"></a>4.1 为什么要分成 <code>sessions.json</code> 和 <code>*.jsonl</code> 两层</h3><p>这是 OpenClaw 一个很值得写进文章的工程取舍：</p>
+<ul>
+<li><strong><code>sessions.json</code></strong> 存的是元数据<ul>
+<li>当前 <code>sessionId</code></li>
+<li>最后活动时间</li>
+<li>token 计数</li>
+<li>model override</li>
+<li><code>compactionCount</code></li>
+<li><code>memoryFlushCompactionCount</code></li>
+</ul>
+</li>
+<li><strong><code>*.jsonl</code></strong> 存的是真正消息历史<ul>
+<li>user &#x2F; assistant &#x2F; toolResult</li>
+<li>custom entry</li>
+<li>compaction entry</li>
+</ul>
+</li>
+</ul>
+<p>这样做的好处是：</p>
+<ul>
+<li>元数据读写快，适合 <code>/status</code> 之类的运维操作</li>
+<li>transcript 保持 append-only，更适合会话回放和 compaction</li>
+<li>小修改不需要重写整个历史文件</li>
+</ul>
+<h3 id="4-2-Session-不是“全局记忆”，而是按路由隔离的"><a href="#4-2-Session-不是“全局记忆”，而是按路由隔离的" class="headerlink" title="4.2 Session 不是“全局记忆”，而是按路由隔离的"></a>4.2 Session 不是“全局记忆”，而是按路由隔离的</h3><p>OpenClaw 在多通道、多群聊、多线程环境里工作，所以它首先要解决的是 <strong>“记忆串线”</strong> 问题，而不是“怎么多记一点”。</p>
+<p>换句话说，OpenClaw 的第一层工程考量是：</p>
+<ul>
+<li>Discord 一个 thread 是一个 session</li>
+<li>Telegram 一个 topic 是一个 session</li>
+<li>群聊 &#x2F; 私聊 &#x2F; 频道通常各有自己的 sessionKey</li>
+</ul>
+<p>这样做的直接结果是：<strong>短期记忆天然带作用域。</strong></p>
+<h3 id="4-3-历史长度不是无限增长，而是按场景限制"><a href="#4-3-历史长度不是无限增长，而是按场景限制" class="headerlink" title="4.3 历史长度不是无限增长，而是按场景限制"></a>4.3 历史长度不是无限增长，而是按场景限制</h3><p>源码里 <code>limitHistoryTurns()</code> 会根据 sessionKey 解析出是 DM 还是群聊，再应用不同的历史长度配置。</p>
+<p>这也不是在“重复实现 Pi 的 compaction”。Pi 的 compaction 更像是上下文接近极限时的自动摘要；而 <code>history limit</code> 是 OpenClaw 在业务层提前做的场景化裁剪。它是一个很重要的产品取舍：</p>
+<ul>
+<li>DM 需要连续性，所以保留最近 N 个 user turn</li>
+<li>群聊&#x2F;频道更容易爆 context，所以要更 aggressively 地截断</li>
+</ul>
+<p>也就是说，OpenClaw 不是对所有对话一视同仁，而是让“会话记忆策略”跟“沟通场景”绑定。</p>
+<hr>
+<h2 id="5-窗口治理：OpenClaw-不是等爆了再压缩，而是三道保险一起上"><a href="#5-窗口治理：OpenClaw-不是等爆了再压缩，而是三道保险一起上" class="headerlink" title="5. 窗口治理：OpenClaw 不是等爆了再压缩，而是三道保险一起上"></a>5. 窗口治理：OpenClaw 不是等爆了再压缩，而是三道保险一起上</h2><p>Pi 本身已经有 <code>auto_compaction</code>，所以“上下文超了怎么办”并不是它没考虑的问题。OpenClaw 在此基础上又堆了三层保护，核心目标不是替代 Pi，而是：</p>
+<ul>
+<li>尽量把明显不该长期占窗口的内容提前裁掉</li>
+<li>尽量推迟 compaction 发生的时机</li>
+<li>真到了必须 compaction 时，再把摘要质量和恢复质量做得更稳</li>
+</ul>
+<p>OpenClaw 在源码里实际上堆了三层保护：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;工具输出&lt;br&#x2F;&gt;历史增长&quot;] --&gt; B[&quot;第一道&lt;br&#x2F;&gt;history limit&lt;br&#x2F;&gt;+ tool result guard&quot;]
+    B --&gt; C[&quot;第二道&lt;br&#x2F;&gt;context pruning&lt;br&#x2F;&gt;软裁剪 &#x2F; 硬清空旧 tool result&quot;]
+    C --&gt; D{&quot;仍会溢出?&quot;}
+    D --&gt;|是| E[&quot;第三道&lt;br&#x2F;&gt;auto-compaction&quot;]
+    E --&gt; F[&quot;compaction safeguard&lt;br&#x2F;&gt;增强摘要质量&quot;]
+    E --&gt; G[&quot;post-compaction&lt;br&#x2F;&gt;context refresh&quot;]
+
+    classDef readable font-size:14px,font-weight:bold;
+    class A,B,C,D,E,F,G readable;</div>
+
+<h3 id="5-1-第一层：单个大-tool-result-先别把窗口打爆"><a href="#5-1-第一层：单个大-tool-result-先别把窗口打爆" class="headerlink" title="5.1 第一层：单个大 tool result 先别把窗口打爆"></a>5.1 第一层：单个大 tool result 先别把窗口打爆</h3><p>OpenClaw 有一个 <code>tool-result-context-guard</code>，核心思路非常务实：</p>
+<ul>
+<li>给 tool result 单独估算字符&#x2F;token 占用</li>
+<li>如果某个工具输出过大，先截断或替换成 placeholder</li>
+<li>防止“一次超大命令输出”直接把整轮上下文吞掉</li>
+</ul>
+<p>这里最容易误解的一点是：<strong>“替换成 placeholder” 不等于“框架会自动帮你再读一次更小的片段”。</strong></p>
+<p>更准确地说，OpenClaw 做的是三步防护：</p>
+<ol>
+<li><strong>写入 transcript 前先截断</strong><ul>
+<li>超大的 <code>toolResult</code> 会先被截成“保留前缀 + 提示语”的版本再落盘</li>
+<li>提示语会明确告诉模型：如果还需要细节，请改用 <code>offset/limit</code> 或指定片段重读</li>
+</ul>
+</li>
+<li><strong>真正组 prompt 时再保护上下文预算</strong><ul>
+<li>如果单个 tool result 仍然过大，会先变成当前轮可见的“截断版”</li>
+<li>如果整轮上下文还是太大，较老的 tool result 会进一步被替换成<br><code>[compacted: tool output removed to free context]</code></li>
+</ul>
+</li>
+<li><strong>如果模型调用时已经发生 overflow</strong><ul>
+<li>先尝试 Pi 的 <code>auto-compaction</code></li>
+<li>还不够时，再把 session 里的超大 tool result 回写成更短版本，然后重试 prompt</li>
+</ul>
+</li>
+</ol>
+<p>所以对“当前这一轮模型能看到什么”来说，你可以这样理解：</p>
+<ul>
+<li><strong>细节确实可能丢失</strong></li>
+<li>但通常不是“一整条结果瞬间消失”</li>
+<li>而是先变成“截断版”，再极端时才退化成“占位符版”</li>
+</ul>
+<p>更关键的是：<strong>OpenClaw 不会自动补发一次 <code>read(path, offset, limit)</code>。</strong><br>“重新读取指定行段”是 agent 在下一步看到这些提示后，自己做出的工具调用决策，而不是 guard 层的自动恢复动作。</p>
+<p>可以拆成两段看：先看进入 prompt 前的预算防护，再看进入推理后的重试与补读。</p>
+<div class="mermaid">flowchart LR
+    A[&quot;读大文件&quot;] --&gt; B[&quot;结果过大&quot;] --&gt; C[&quot;先截断落盘&quot;] --&gt; D{&quot;预算够吗?&quot;}
+    D --&gt;|够| E[&quot;带截断版进 prompt&quot;]
+    D --&gt;|不够| F[&quot;旧结果改成 placeholder&lt;br&#x2F;&gt;再进 prompt&quot;]</div>
+
+<div class="mermaid">flowchart LR
+    A[&quot;开始推理&quot;] --&gt; B{&quot;仍 overflow?&quot;}
+    B --&gt;|是| C[&quot;先 auto-compaction&quot;] --&gt; D{&quot;还不够?&quot;}
+    D --&gt;|是| E[&quot;再缩短 tool result&quot;] --&gt; F[&quot;继续 &#x2F; 重试&quot;]
+    D --&gt;|否| F
+    B --&gt;|否| F
+    F --&gt; G{&quot;模型还要细节?&quot;}
+    G --&gt;|否| H[&quot;继续任务&quot;]
+    G --&gt;|是| I[&quot;agent 自己重读小片段&quot;]</div>
+
+<p>换句话说，OpenClaw 的自动动作是 <strong>“压缩后重试”</strong>，不是 <strong>“自动精确重读”</strong>。<br>后者要等模型意识到自己缺了关键信息，再主动发起下一次更小粒度的工具调用。</p>
+<p>这类 guard 不是“智能记忆”，但它非常重要。因为在真实工程环境里，真正杀死上下文窗口的往往不是对话，而是：</p>
+<ul>
+<li><code>read</code> 大文件</li>
+<li><code>exec</code> 大量日志</li>
+<li><code>web_fetch</code> 长网页</li>
+</ul>
+<h3 id="5-2-第二层：老旧工具结果做-pruning，不碰真正的对话骨架"><a href="#5-2-第二层：老旧工具结果做-pruning，不碰真正的对话骨架" class="headerlink" title="5.2 第二层：老旧工具结果做 pruning，不碰真正的对话骨架"></a>5.2 第二层：老旧工具结果做 pruning，不碰真正的对话骨架</h3><p>当启用 <code>contextPruning.mode = &quot;cache-ttl&quot;</code> 时，OpenClaw 会通过 Pi extension 对旧的 tool result 做裁剪。</p>
+<p>这一层最容易误解成“把旧消息随便删掉”。实际上它做得很克制，更像是：</p>
+<blockquote>
+<p><strong>只处理旧的、可再获取的工具输出；尽量不碰 user &#x2F; assistant 主线。</strong></p>
+</blockquote>
+<p>可以把它拆成 4 个问题来看。</p>
+<h4 id="5-2-1-什么时候会触发"><a href="#5-2-1-什么时候会触发" class="headerlink" title="5.2.1 什么时候会触发"></a>5.2.1 什么时候会触发</h4><p>它不是每一轮都跑，而是一个挂在 Pi <code>context</code> 阶段上的 extension：</p>
+<ul>
+<li>只有 <code>mode = &quot;cache-ttl&quot;</code> 时才启用</li>
+<li>上次 prune 之后要过一段 TTL 才会再次触发</li>
+<li>只有当前上下文占比达到阈值时才真正动手</li>
+</ul>
+<p>默认参数大致是：</p>
+<ul>
+<li><code>keepLastAssistants = 3</code></li>
+<li><code>softTrimRatio = 0.3</code></li>
+<li><code>hardClearRatio = 0.5</code></li>
+<li><code>softTrim.maxChars = 4000</code></li>
+<li><code>softTrim.headChars = 1500</code></li>
+<li><code>softTrim.tailChars = 1500</code></li>
+</ul>
+<p>也就是说，它解决的不是“单次超大输出”的问题，而是：</p>
+<blockquote>
+<p><strong>会话跑久了以后，老旧工具输出不断堆积，慢慢挤占上下文窗口。</strong></p>
+</blockquote>
+<h4 id="5-2-2-它会动哪些消息"><a href="#5-2-2-它会动哪些消息" class="headerlink" title="5.2.2 它会动哪些消息"></a>5.2.2 它会动哪些消息</h4><p>pruning 不会从头到尾乱扫一遍，而是先划出一段“允许处理的中间区域”：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;bootstrap 区域&lt;br&#x2F;&gt;第一条 user 之前&quot;] --&gt; B[&quot;旧历史中段&lt;br&#x2F;&gt;可考虑 pruning&quot;]
+    B --&gt; C[&quot;最近 N 条 assistant 之后的尾部&lt;br&#x2F;&gt;受保护&quot;]</div>
+
+<p>更具体地说：</p>
+<ul>
+<li><strong>第一条 user message 之前不动</strong><ul>
+<li>这是 bootstrap 区域，通常包含 SOUL &#x2F; USER &#x2F; TOOLS 等初始身份上下文</li>
+</ul>
+</li>
+<li><strong>最近几条 assistant 附近不动</strong><ul>
+<li><code>keepLastAssistants</code> 用来保护最新尾部，避免把当前任务主线裁坏</li>
+</ul>
+</li>
+<li><strong>只优先处理 <code>toolResult</code></strong><ul>
+<li>普通 user &#x2F; assistant 消息不在这一层的优先处理范围里</li>
+</ul>
+</li>
+<li><strong>还能按工具名做 allow &#x2F; deny</strong><ul>
+<li>例如允许裁 <code>read</code> &#x2F; <code>exec</code>，但不裁某些特殊工具</li>
+</ul>
+</li>
+<li><strong>带图片的 tool result 暂时跳过</strong><ul>
+<li>因为图像结果很难做安全的部分裁剪</li>
+</ul>
+</li>
+</ul>
+<p>所以你可以把这一层理解成：</p>
+<blockquote>
+<p>先圈出“老旧、居中、可重取”的工具结果，再考虑压缩它们。</p>
+</blockquote>
+<h4 id="5-2-3-“软裁剪”到底是什么"><a href="#5-2-3-“软裁剪”到底是什么" class="headerlink" title="5.2.3 “软裁剪”到底是什么"></a>5.2.3 “软裁剪”到底是什么</h4><p>“软裁剪”不是把整条工具输出删掉，而是把它压成一个<strong>保留头尾的缩略版</strong>。</p>
+<p>如果某个旧 <code>toolResult</code> 很长，OpenClaw 会把它改成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">前 1500 chars</span><br><span class="line">...</span><br><span class="line">后 1500 chars</span><br><span class="line"></span><br><span class="line">[Tool result trimmed: kept first 1500 chars and last 1500 chars of 28000 chars.]</span><br></pre></td></tr></table></figure>
+
+<p>这就是软裁剪的核心含义：</p>
+<ul>
+<li><strong>保留开头</strong><ul>
+<li>通常能看出这是哪个文件、哪个命令、哪段日志</li>
+</ul>
+</li>
+<li><strong>保留结尾</strong><ul>
+<li>通常能看出最后报错、最终状态、收尾信息</li>
+</ul>
+</li>
+<li><strong>中间大段内容丢掉</strong><ul>
+<li>因为它最占窗口，但往往信息密度最低</li>
+</ul>
+</li>
+</ul>
+<p>它对应的伪代码大致就是：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (toolResult.<span class="title function_">tooLong</span>()) &#123;</span><br><span class="line">  toolResult =</span><br><span class="line">    <span class="title function_">head</span>(toolResult, <span class="number">1500</span>) +</span><br><span class="line">    <span class="string">&quot;\n...\n&quot;</span> +</span><br><span class="line">    <span class="title function_">tail</span>(toolResult, <span class="number">1500</span>) +</span><br><span class="line">    <span class="string">&quot;\n[Tool result trimmed ...]&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以软裁剪不是“删除”，而是：</p>
+<blockquote>
+<p><strong>把旧工具结果从“完整正文”降级成“带头尾线索的摘要版缓存”。</strong></p>
+</blockquote>
+<h4 id="5-2-4-什么时候会“硬清空”"><a href="#5-2-4-什么时候会“硬清空”" class="headerlink" title="5.2.4 什么时候会“硬清空”"></a>5.2.4 什么时候会“硬清空”</h4><p>如果做完软裁剪之后，整轮上下文占比还是太高，才会进入第二步：<strong>硬清空</strong>。</p>
+<p>硬清空的做法更直接：</p>
+<ul>
+<li>不再保留头尾</li>
+<li>直接把整条旧 <code>toolResult</code> 改成一个占位符</li>
+</ul>
+<p>例如：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[Old tool result content cleared]</span><br></pre></td></tr></table></figure>
+
+<p>但它也不是无脑清：</p>
+<ul>
+<li>只清前面已经判定为“可 pruning”的那些旧 tool result</li>
+<li>只有可清理内容达到一定体量时才值得做</li>
+<li>一旦上下文占比降回阈值以下，就停止继续清</li>
+</ul>
+<p>所以这一层的顺序其实是：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;进入 context&quot;] --&gt; B{&quot;TTL 到?&quot;}
+    B --&gt;|否| Z[&quot;跳过 pruning&quot;]
+    B --&gt;|是| C[&quot;计算占比&quot;] --&gt; D{&quot;超 softTrim?&quot;}
+    D --&gt;|否| Z
+    D --&gt;|是| E[&quot;找旧 toolResult&quot;] --&gt; F[&quot;先软裁剪&quot;] --&gt; G{&quot;超 hardClear?&quot;}
+    G --&gt;|否| H[&quot;返回裁剪后的 messages&quot;]
+    G --&gt;|是| I[&quot;更老结果改 placeholder&quot;] --&gt; J[&quot;达到预算即停止&quot;]</div>
+
+<h4 id="5-2-5-一个直观例子"><a href="#5-2-5-一个直观例子" class="headerlink" title="5.2.5 一个直观例子"></a>5.2.5 一个直观例子</h4><p>假设上下文里有这样一段历史：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">user: 帮我看一下这个项目</span><br><span class="line">assistant: 我先读配置和日志</span><br><span class="line">toolResult(read): package.json 全文，22000 chars</span><br><span class="line">toolResult(exec): 构建日志，18000 chars</span><br><span class="line">user: 那现在为什么启动失败？</span><br><span class="line">assistant: 我再看最后的错误</span><br><span class="line">toolResult(read): 最近 200 行日志</span><br><span class="line">assistant: 正在分析</span><br></pre></td></tr></table></figure>
+
+<p>pruning 之后，结果更可能变成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">user: 帮我看一下这个项目</span><br><span class="line">assistant: 我先读配置和日志</span><br><span class="line">toolResult(read): package.json 前 1500 chars ... 后 1500 chars</span><br><span class="line">[Tool result trimmed ...]</span><br><span class="line">toolResult(exec): [Old tool result content cleared]</span><br><span class="line">user: 那现在为什么启动失败？</span><br><span class="line">assistant: 我再看最后的错误</span><br><span class="line">toolResult(read): 最近 200 行日志</span><br><span class="line">assistant: 正在分析</span><br></pre></td></tr></table></figure>
+
+<p>从这个例子可以看出，它想保住的是：</p>
+<ol>
+<li>当前任务主线还在</li>
+<li>最近几轮关键分析还在</li>
+<li>很老的大输出被压缩成“可提示、可重取”的形式</li>
+</ol>
+<p>这说明 OpenClaw 在上下文治理上的优先级很明确：</p>
+<ol>
+<li>先保住对话主线</li>
+<li>再压缩附属结果</li>
+<li>实在不行才 compaction</li>
+</ol>
+<h3 id="5-3-第三层：真的快压缩了，先做一次“memory-flush”"><a href="#5-3-第三层：真的快压缩了，先做一次“memory-flush”" class="headerlink" title="5.3 第三层：真的快压缩了，先做一次“memory flush”"></a>5.3 第三层：真的快压缩了，先做一次“memory flush”</h3><p>这是 OpenClaw 很有意思、也很“Agentic”的设计。</p>
+<p>当系统估计当前 session 接近 compaction 阈值时，会先偷偷跑一轮 <strong>pre-compaction memory flush</strong>：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="title function_">shouldRunMemoryFlush</span>(...)) &#123;</span><br><span class="line">  <span class="keyword">await</span> <span class="title function_">runEmbeddedPiAgent</span>(&#123;</span><br><span class="line">    <span class="attr">prompt</span>: <span class="string">&quot;Pre-compaction memory flush...&quot;</span>,</span><br><span class="line">    <span class="attr">extraSystemPrompt</span>: memoryFlushSystemPrompt,</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>它的作用不是回复用户，而是提醒模型：</p>
+<ul>
+<li>如果有值得长期保存的事实</li>
+<li>现在就写入 <code>memory/YYYY-MM-DD.md</code></li>
+<li>如果没东西可写，就回复 <code>NO_REPLY</code></li>
+</ul>
+<p>这个设计体现了一个很强的工程判断：</p>
+<blockquote>
+<p>压缩会丢细节，所以在压缩前，先给模型一次把“耐久信息”落盘的机会。</p>
+</blockquote>
+<p>更重要的是，OpenClaw 没有粗暴触发它，而是做了很多 gating：</p>
+<ul>
+<li>只在接近阈值时触发</li>
+<li>heartbeat &#x2F; CLI run 不触发</li>
+<li>沙箱 workspace 只读时不触发</li>
+<li>每个 compaction 周期只跑一次</li>
+<li>还会读取 transcript 的最新 usage&#x2F;字节大小来补齐判断</li>
+</ul>
+<h3 id="5-4-Compaction-不只是摘要，而是“增强过的摘要”"><a href="#5-4-Compaction-不只是摘要，而是“增强过的摘要”" class="headerlink" title="5.4 Compaction 不只是摘要，而是“增强过的摘要”"></a>5.4 Compaction 不只是摘要，而是“增强过的摘要”</h3><p>Pi 原生会做 auto-compaction，但 OpenClaw 通过 <code>compaction-safeguard</code> 把摘要输入增强了。</p>
+<p>如果只说“增强了摘要”，还是太抽象。更准确地说，OpenClaw 把 compaction 变成了一条 <strong>前中后分层处理的流水线</strong>：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;接近阈值&quot;] --&gt; B[&quot;先 flush durable memory&quot;]
+    B --&gt; C[&quot;Pi compact()&quot;]
+    C --&gt; D[&quot;增强 summary&quot;]
+    D --&gt; E[&quot;写 compaction entry&quot;]
+    E --&gt; F[&quot;刷新上下文&quot;]
+    F --&gt; G[&quot;下一轮 prompt&quot;]</div>
+
+<p>其中 <code>compaction-safeguard</code> 真正做的事情，不是简单地把“所有旧消息”扔给一个 summarizer，而是按下面几步处理：</p>
+<ol>
+<li><strong>先做预算判断</strong><br>根据 <code>contextWindow</code> 和 <code>maxHistoryShare</code> 估算“旧历史最多还能占多少窗口”。</li>
+<li><strong>太长就先裁老 chunk</strong><br>如果待总结历史太大，会先丢掉最老的 chunk，只保留更值得留在主摘要里的那部分。</li>
+<li><strong>被丢掉的 chunk 也不是直接作废</strong><br>它们会再走一轮 staged summarization，先压成一个 <code>droppedSummary</code>，再并回主摘要输入。</li>
+<li><strong>如果切在一个 turn 中间，额外总结 turn prefix</strong><br>避免摘要只看见后半截上下文，丢掉“这个 turn 一开始在干什么”。</li>
+<li><strong>把关键工程事实拼到摘要后面</strong><br>包括 tool failure、读过哪些文件、改过哪些文件、<code>AGENTS.md</code> 里的关键规则。</li>
+</ol>
+<p>可以把它压成接近伪代码的形式：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">summary = <span class="title function_">summarize</span>(history)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (droppedOldChunks) &#123;</span><br><span class="line">  summary = <span class="title function_">summarize</span>(droppedOldChunks) + summary</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (splitTurn) &#123;</span><br><span class="line">  summary += <span class="title function_">summarize</span>(turnPrefix)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">summary += toolFailures</span><br><span class="line">summary += fileOperations</span><br><span class="line">summary += workspaceCriticalRules</span><br></pre></td></tr></table></figure>
+
+<p>也就是说，增强内容包括：</p>
+<ul>
+<li>最近的对话主线</li>
+<li>被切掉的更老历史的二级摘要</li>
+<li>split turn 的前缀信息</li>
+<li>tool failure 摘要</li>
+<li>文件读写列表</li>
+<li>从 <code>AGENTS.md</code> 提取出的关键规则（如 <code>Session Startup</code>、<code>Red Lines</code>）</li>
+</ul>
+<p>换句话说，OpenClaw 不满足于“把旧消息总结一下”，而是希望 compaction summary 至少保留：</p>
+<ul>
+<li>用户原始任务脉络</li>
+<li>已经失败过什么</li>
+<li>改过哪些文件</li>
+<li>哪些硬规则不能忘</li>
+</ul>
+<p>还有一个很务实的工程取舍：<strong>如果 safeguard 自己总结失败，它会直接取消这次 compaction，而不是硬写一条可能很差的 summary。</strong></p>
+<p>这就是它和很多“通用 agent SDK 自动摘要”最大的不同之一。</p>
+<h3 id="5-5-压缩完以后，再把关键上下文拉回一点"><a href="#5-5-压缩完以后，再把关键上下文拉回一点" class="headerlink" title="5.5 压缩完以后，再把关键上下文拉回一点"></a>5.5 压缩完以后，再把关键上下文拉回一点</h3><p>compaction 完成后，OpenClaw 还会再做一次补救：</p>
+<ul>
+<li>从 <code>AGENTS.md</code> 里抽取关键 section</li>
+<li>生成一条 <code>[Post-compaction context refresh]</code></li>
+<li>作为系统事件重新塞回当前 session</li>
+</ul>
+<p>它做的不是“再总结一次”，而是给<strong>下一轮</strong>推理塞一个明确提醒：</p>
+<ul>
+<li>上面的 compaction summary 只是 hint</li>
+<li>不能拿它替代完整的 Session Startup</li>
+<li>需要重新读取关键规则再继续行动</li>
+</ul>
+<p>可以把这一步理解成：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (autoCompactionCompleted) &#123;</span><br><span class="line">  <span class="keyword">const</span> refresh = <span class="title function_">readPostCompactionContext</span>(workspaceDir)</span><br><span class="line">  <span class="title function_">enqueueSystemEvent</span>(refresh, &#123; sessionKey &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以 post-compaction context refresh 的本质不是“补几句说明”，而是：</p>
+<blockquote>
+<p><strong>在一次不可避免的信息压缩之后，把最不能忘的启动规则重新拉回上下文。</strong></p>
+</blockquote>
+<p>这一步的意图很明显：<strong>compaction summary 只是摘要，不应该替代完整的启动规则。</strong></p>
+<hr>
+<h2 id="6-长期记忆：Markdown-才是真相，索引只是加速层"><a href="#6-长期记忆：Markdown-才是真相，索引只是加速层" class="headerlink" title="6. 长期记忆：Markdown 才是真相，索引只是加速层"></a>6. 长期记忆：Markdown 才是真相，索引只是加速层</h2><p>如果说 Session 是“工作记忆”，那 OpenClaw 的长期记忆更像“笔记本 + 检索器”。</p>
+<h3 id="6-1-默认设计：Markdown-是-source-of-truth"><a href="#6-1-默认设计：Markdown-是-source-of-truth" class="headerlink" title="6.1 默认设计：Markdown 是 source of truth"></a>6.1 默认设计：Markdown 是 source of truth</h3><p>OpenClaw 默认长期记忆的中心不是某个 DB，而是 workspace 中的人类可编辑文件：</p>
+<ul>
+<li><code>MEMORY.md</code> &#x2F; <code>memory.md</code></li>
+<li><code>memory/YYYY-MM-DD.md</code></li>
+</ul>
+<p>这是一种非常刻意的工程取舍：</p>
+<ul>
+<li>易读、易改、易备份</li>
+<li>可以直接放进 git</li>
+<li>不把“记忆真相”锁死在向量库里</li>
+</ul>
+<p>所以 OpenClaw 的检索索引从一开始就被定义成 <strong>derived index</strong>，不是 canonical source。</p>
+<p>如果把这两类 memory 文件写得更具体一点，它们大概像这样：</p>
+<figure class="highlight md"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># MEMORY.md</span></span><br><span class="line"></span><br><span class="line"><span class="section">## 用户偏好</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> 用户更喜欢先看结论，再看细节</span><br><span class="line"><span class="bullet">-</span> 讨论代码时默认用中文</span><br><span class="line"></span><br><span class="line"><span class="section">## 长期项目事实</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> 主仓库是 openclaw</span><br><span class="line"><span class="bullet">-</span> 常用分支策略是 main + feature branch</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight md"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># memory/2026-03-16.md</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> 今天在整理 OpenClaw 上下文记忆设计的博客</span><br><span class="line"><span class="bullet">-</span> 重点卡在 Pi 的 createAgentSession 和 compaction 生命周期</span><br><span class="line"><span class="bullet">-</span> 需要把 transcript / sessions.json / reset archive 的关系画清楚</span><br></pre></td></tr></table></figure>
+
+<p>这两者的角色是不同的：</p>
+<ul>
+<li><strong><code>MEMORY.md</code></strong> 更像“整理过的长期记忆”</li>
+<li><strong><code>memory/YYYY-MM-DD.md</code></strong> 更像“当天流水账 &#x2F; 工作日志”</li>
+</ul>
+<p>这也是为什么模板里会建议：</p>
+<ul>
+<li>今天和昨天的 daily note 可以作为近期上下文</li>
+<li>真正长期有效的事实，要定期沉淀进 <code>MEMORY.md</code></li>
+</ul>
+<h3 id="6-2-默认-memory-plugin：memory-core"><a href="#6-2-默认-memory-plugin：memory-core" class="headerlink" title="6.2 默认 memory plugin：memory-core"></a>6.2 默认 memory plugin：<code>memory-core</code></h3><p>OpenClaw 默认启用的 memory slot 是 <code>memory-core</code>。它负责注册两个工具：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="title function_">memory_search</span>(query, maxResults?, minScore?)</span><br><span class="line"><span class="title function_">memory_get</span>(path, <span class="keyword">from</span>?, lines?)</span><br></pre></td></tr></table></figure>
+
+<p>二者分工很清楚：</p>
+<ul>
+<li>**<code>memory_search</code>**：语义检索，返回 snippet + path + 行号</li>
+<li>**<code>memory_get</code>**：精读某个文件的某一段，避免整份文件重新灌入上下文</li>
+</ul>
+<p>这也是 OpenClaw 的第二个关键取舍：</p>
+<blockquote>
+<p>长期记忆默认不常驻，而是通过工具按需召回。</p>
+</blockquote>
+<p>如果从实现上看，<code>memory-core</code> 本身其实很薄：它主要就是把这两个工具注册给 agent。</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">api.<span class="title function_">registerTool</span>(<span class="function">() =&gt;</span> [memorySearchTool, memoryGetTool], &#123;</span><br><span class="line">  <span class="attr">names</span>: [<span class="string">&quot;memory_search&quot;</span>, <span class="string">&quot;memory_get&quot;</span>],</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>真正的分工在两个工具本身：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="title function_">memory_search</span>(query, maxResults?, minScore?)</span><br><span class="line">-&gt; 返回相关 snippet + path + startLine/endLine + score</span><br><span class="line"></span><br><span class="line"><span class="title function_">memory_get</span>(path, <span class="keyword">from</span>?, lines?)</span><br><span class="line">-&gt; 读取指定 <span class="title class_">Markdown</span> 文件的指定行段</span><br></pre></td></tr></table></figure>
+
+<p>可以把它理解成：</p>
+<ul>
+<li><code>memory_search</code> &#x3D; <strong>先定位</strong></li>
+<li><code>memory_get</code> &#x3D; <strong>再精读</strong></li>
+</ul>
+<p>也就是说，agent 不需要先把整个 <code>memory/</code> 目录塞进 prompt，而是走一条两段式链路：</p>
+<div class="mermaid">flowchart LR
+    Q[&quot;用户问题&quot;] --&gt; S[&quot;memory_search&lt;br&#x2F;&gt;先找最相关的几个 chunk&quot;]
+    S --&gt; R[&quot;返回 snippet + path#line&quot;]
+    R --&gt; G[&quot;memory_get&lt;br&#x2F;&gt;只读需要展开的文件&#x2F;行段&quot;]
+    G --&gt; A[&quot;把真正需要的那几段内容带回当前上下文&quot;]</div>
+
+<p>这就是“按需读取”的核心。</p>
+<p>为什么它能按需？因为 <code>memory_search</code> 返回的不是整份文件，而是<strong>已经切好的 chunk 命中</strong>：</p>
+<ul>
+<li><code>path</code></li>
+<li><code>startLine</code></li>
+<li><code>endLine</code></li>
+<li><code>snippet</code></li>
+<li><code>score</code></li>
+</ul>
+<p>比如一次搜索结果，逻辑上可能长这样：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;results&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;path&quot;</span><span class="punctuation">:</span> <span class="string">&quot;memory/2026-03-16.md&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;startLine&quot;</span><span class="punctuation">:</span> <span class="number">12</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;endLine&quot;</span><span class="punctuation">:</span> <span class="number">18</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;snippet&quot;</span><span class="punctuation">:</span> <span class="string">&quot;需要把 transcript / sessions.json / reset archive 的关系画清楚&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;score&quot;</span><span class="punctuation">:</span> <span class="number">0.84</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>然后 agent 再决定要不要调用：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="title function_">memory_get</span>(<span class="string">&quot;memory/2026-03-16.md&quot;</span>, <span class="number">12</span>, <span class="number">8</span>)</span><br></pre></td></tr></table></figure>
+
+<p>只把这 8 行带回来，而不是把整份 <code>memory/2026-03-16.md</code> 全部注入。</p>
+<h3 id="6-3-内置-memory-manager：SQLite-FTS-vector-混合检索"><a href="#6-3-内置-memory-manager：SQLite-FTS-vector-混合检索" class="headerlink" title="6.3 内置 memory manager：SQLite + FTS + vector 混合检索"></a>6.3 内置 memory manager：SQLite + FTS + vector 混合检索</h3><p><code>memory-core</code> 背后默认接的是内置 <code>MemoryIndexManager</code>。从源码看，它并不是简单的向量搜索，而是混合检索：</p>
+<div class="mermaid">flowchart LR
+    F[&quot;MEMORY.md &#x2F; memory&#x2F;*.md&quot;] --&gt; I[&quot;MemoryIndexManager&quot;]
+    I --&gt; C[&quot;按行预算切成 chunk&quot;]
+    C --&gt; S[&quot;写入 SQLite 主表&quot;]
+    C --&gt; K[&quot;写入 FTS5 倒排索引&quot;]
+    C --&gt; V[&quot;写入向量表 &#x2F; embedding cache&quot;]
+    K --&gt; M[&quot;Hybrid merge &#x2F; MMR &#x2F; temporal decay&quot;]
+    V --&gt; M
+    M --&gt; R[&quot;snippet + score + path#line&quot;]</div>
+
+<p>先回答几个最容易混淆的问题。</p>
+<h4 id="6-3-1-“按-chunk-切分”是不是按-标题切？"><a href="#6-3-1-“按-chunk-切分”是不是按-标题切？" class="headerlink" title="6.3.1 “按 chunk 切分”是不是按 ## 标题切？"></a>6.3.1 “按 chunk 切分”是不是按 <code>##</code> 标题切？</h4><p><strong>不是。当前内置实现不是按 Markdown 标题语义切，而是按“行 + 大小预算”切。</strong></p>
+<p><code>MemoryIndexManager</code> 里的 <code>chunkMarkdown()</code> 做法更朴素：</p>
+<ul>
+<li>把文件按行拆开</li>
+<li>按 <code>tokens * 4</code> 粗略估算一个字符预算</li>
+<li>逐行往当前 chunk 里累加</li>
+<li>一旦超预算，就 flush 成一个 chunk</li>
+<li>如果配置了 overlap，还会把尾部一小段带到下一个 chunk</li>
+<li>如果某一行本身就太长，还会把这一行继续切成多个 segment</li>
+</ul>
+<p>所以它更接近：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (line <span class="keyword">of</span> lines) &#123;</span><br><span class="line">  <span class="keyword">if</span> (currentChunk + line &gt; maxChars) &#123;</span><br><span class="line">    <span class="title function_">flush</span>(currentChunk)</span><br><span class="line">    <span class="title function_">carryOverlap</span>()</span><br><span class="line">  &#125;</span><br><span class="line">  currentChunk.<span class="title function_">push</span>(line)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味着：</p>
+<ul>
+<li>一个 <code>##</code> 小标题<strong>有时</strong>会自然落在 chunk 边界附近</li>
+<li>但系统<strong>并没有</strong>先解析 Markdown AST，再按标题树切块</li>
+</ul>
+<p>一个直观例子：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 偏好</span><br><span class="line">喜欢简洁回答</span><br><span class="line"></span><br><span class="line">## 项目 A</span><br><span class="line">今天修了 session reset 逻辑</span><br><span class="line">补了 transcript 图示</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>内置 chunker 不会直接说“<code># 偏好</code> 一块、<code>## 项目 A</code> 一块”，而更像是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">chunk 1: 第 1-18 行</span><br><span class="line">chunk 2: 第 17-32 行   // 如果配置了 overlap，会有一点重叠</span><br><span class="line">chunk 3: 第 33-48 行</span><br></pre></td></tr></table></figure>
+
+<p>所以返回结果里最重要的定位信息其实是：</p>
+<ul>
+<li><code>path</code></li>
+<li><code>startLine</code></li>
+<li><code>endLine</code></li>
+</ul>
+<p>而不是“命中某个 heading 节点”。</p>
+<h4 id="6-3-2-“写进内置索引”到底是写了什么"><a href="#6-3-2-“写进内置索引”到底是写了什么" class="headerlink" title="6.3.2 “写进内置索引”到底是写了什么"></a>6.3.2 “写进内置索引”到底是写了什么</h4><p>这里的“内置索引”本质上就是一份 SQLite 索引库，不是一个抽象概念。<br>同一个 chunk 会被写进几类结构里：</p>
+<ul>
+<li><strong><code>files</code></strong><ul>
+<li>记录文件级元数据：<code>path / hash / mtime / size</code></li>
+</ul>
+</li>
+<li><strong><code>chunks</code></strong><ul>
+<li>记录 chunk 正文和定位信息：<code>path / start_line / end_line / text / embedding</code></li>
+</ul>
+</li>
+<li><strong><code>chunks_fts</code></strong><ul>
+<li>SQLite FTS5 虚拟表，给关键词搜索用</li>
+</ul>
+</li>
+<li><strong><code>chunks_vec</code></strong><ul>
+<li>可选的向量表，给向量相似度搜索用</li>
+</ul>
+</li>
+<li><strong><code>embedding_cache</code></strong><ul>
+<li>用 <code>hash -&gt; embedding</code> 做缓存，避免文件没变时重复 embedding</li>
+</ul>
+</li>
+</ul>
+<p>所以“写入索引”不是只写一份文本，而是把同一份 memory chunk 拆成“元数据 + 全文索引 + 向量索引 + 缓存”几层。</p>
+<p>可以把一次同步理解成这样：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;扫描 memory&quot;] --&gt; B[&quot;算文件 hash &#x2F; mtime&quot;] --&gt; C[&quot;切 chunk&quot;]
+    C --&gt; D[&quot;算 chunk hash&quot;] --&gt; E[&quot;生成 embedding&quot;] --&gt; F[&quot;写 files &#x2F; chunks &#x2F; cache&quot;]
+    F --&gt; G[&quot;更新 FTS &#x2F; vec&quot;]</div>
+
+<p>这一步还有两个工程取舍很关键：</p>
+<ul>
+<li><strong>文件变了才重建对应索引</strong><ul>
+<li>watcher 只会把 manager 标记成 dirty，然后在 <code>onSearch</code> &#x2F; <code>onSessionStart</code> &#x2F; interval sync 时同步</li>
+</ul>
+</li>
+<li><strong>embedding 会尽量复用缓存</strong><ul>
+<li>只要 chunk 的 hash 没变，就不需要再调用 embedding provider</li>
+</ul>
+</li>
+</ul>
+<h4 id="6-3-3-关键词搜索是正则吗？"><a href="#6-3-3-关键词搜索是正则吗？" class="headerlink" title="6.3.3 关键词搜索是正则吗？"></a>6.3.3 关键词搜索是正则吗？</h4><p>这部分最容易被误解成“是不是拿正则扫一遍全文”。<strong>不是。</strong></p>
+<p>这里的 FTS 是 <strong>Full-Text Search，全文检索</strong>。<br>它的思路更像搜索引擎，而不是正则匹配：</p>
+<ul>
+<li>建索引时，先把每个 chunk 里的词拆出来</li>
+<li>建一张“哪个词出现在哪些 chunk” 的倒排索引</li>
+<li>查询时直接查这张索引，而不是每次把所有 Markdown 全文重新扫一遍</li>
+</ul>
+<p>你可以把它想象成这样一张简化表：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&quot;transcript&quot; -&gt; chunk_12, chunk_18</span><br><span class="line">&quot;reset&quot;      -&gt; chunk_18, chunk_27</span><br><span class="line">&quot;archive&quot;    -&gt; chunk_18</span><br></pre></td></tr></table></figure>
+
+<p>当用户搜索：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">transcript reset archive</span><br></pre></td></tr></table></figure>
+
+<p>SQLite FTS5 更像是在倒排索引里找：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">哪些 chunk 同时命中了这些词？</span><br></pre></td></tr></table></figure>
+
+<p>而不是像正则那样去问：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">有没有一段文本满足 /transcript.*reset.*archive/ 这种字符模式？</span><br></pre></td></tr></table></figure>
+
+<p>所以这里的关键词搜索：</p>
+<ul>
+<li><strong>不是 regex</strong></li>
+<li><strong>不是简单 <code>includes()</code></strong></li>
+<li><strong>也不是 LLM 在理解语义</strong></li>
+<li>而是标准的 <strong>FTS5 + BM25</strong> 全文检索</li>
+</ul>
+<h4 id="6-3-3-1-FTS-only-到底是什么"><a href="#6-3-3-1-FTS-only-到底是什么" class="headerlink" title="6.3.3.1 FTS-only 到底是什么"></a>6.3.3.1 <code>FTS-only</code> 到底是什么</h4><p><code>FTS-only</code> 的意思非常直接：</p>
+<blockquote>
+<p><strong>只有全文检索，没有 embedding，也没有向量相似度搜索。</strong></p>
+</blockquote>
+<p>也就是说：</p>
+<ul>
+<li>不会去生成 query embedding</li>
+<li>不会查 <code>chunks_vec</code></li>
+<li>只查 <code>chunks_fts</code></li>
+</ul>
+<p>这种模式通常发生在：</p>
+<ul>
+<li>没有可用的 embedding provider</li>
+<li>或者你明确只想用关键词检索</li>
+</ul>
+<p>它的好处是：</p>
+<ul>
+<li>完全不依赖 embedding API</li>
+<li>没有额外 embedding 费用</li>
+<li>对 ID、变量名、文件名、错误码这类精确词很有效</li>
+</ul>
+<p>它的弱点也很明显：</p>
+<ul>
+<li>对“换了说法但意思相近”的问题不如向量检索</li>
+<li>更依赖关键词是否刚好命中</li>
+</ul>
+<p>这里有一个很重要、也很容易被忽略的现实：</p>
+<blockquote>
+<p><strong>在 OpenClaw 当前默认的 FTS5 配置下，中文并不等于“自动细粒度分词”。</strong></p>
+</blockquote>
+<p>换句话说，它未必会把一句中文拆成你直觉里的：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">科技</span><br><span class="line">编程</span><br><span class="line">量化交易</span><br><span class="line">加密货币</span><br><span class="line">AI</span><br><span class="line">工具</span><br></pre></td></tr></table></figure>
+
+<p>例如，长期记忆里有这样一句话：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">用户喜欢科技、编程与量化交易，也对加密货币和AI工具感兴趣。平时关注效率工具、新技术趋势，偶尔研究投资策略。</span><br></pre></td></tr></table></figure>
+
+<p>按当前默认 FTS5 的实际行为，它更可能被索引成这些短语块：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&quot;用户喜欢科技&quot;               -&gt; chunk_42</span><br><span class="line">&quot;编程与量化交易&quot;             -&gt; chunk_42</span><br><span class="line">&quot;也对加密货币和ai工具感兴趣&quot; -&gt; chunk_42</span><br><span class="line">&quot;平时关注效率工具&quot;           -&gt; chunk_42</span><br><span class="line">&quot;新技术趋势&quot;                 -&gt; chunk_42</span><br><span class="line">&quot;偶尔研究投资策略&quot;           -&gt; chunk_42</span><br></pre></td></tr></table></figure>
+
+<p>这个例子说明了两件事：</p>
+<ol>
+<li><strong>FTS 在这里更像“短语命中”</strong><ul>
+<li>搜 <code>新技术趋势</code>，比较可能直接命中</li>
+<li>搜 <code>偶尔研究投资策略</code>，也比较可能命中</li>
+</ul>
+</li>
+<li><strong>单独搜很短的中文词，不一定稳</strong><ul>
+<li>例如只搜 <code>工具</code>、<code>科技</code>、<code>AI</code>，按默认 FTS 行为未必单独命中</li>
+</ul>
+</li>
+</ol>
+<p>所以 <code>FTS-only</code> 更适合：</p>
+<ul>
+<li>文件名</li>
+<li>错误码</li>
+<li>英文标识符</li>
+<li>比较完整的短语</li>
+</ul>
+<p>而不太适合指望它天然拥有“很强的中文语义分词能力”。</p>
+<p>这也是为什么 OpenClaw 在有条件时会优先加上 vector&#x2F;hybrid 检索，来补足 FTS 对中文自然语言召回的短板。</p>
+<p>顺着这个结论，也能反推出一个很实用的写 memory 的建议：</p>
+<figure class="highlight md"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">-</span> 兴趣：科技、编程、量化交易、加密货币、AI 工具</span><br><span class="line"><span class="bullet">-</span> 关注点：效率工具、新技术趋势</span><br><span class="line"><span class="bullet">-</span> 偶尔研究：投资策略</span><br></pre></td></tr></table></figure>
+
+<p>这种结构化写法，通常比一整句自然语言更容易被 <code>FTS-only</code> 稳定命中。</p>
+<h4 id="6-3-3-2-它实际怎么搜索"><a href="#6-3-3-2-它实际怎么搜索" class="headerlink" title="6.3.3.2 它实际怎么搜索"></a>6.3.3.2 它实际怎么搜索</h4><p>这里又要分两种情况。</p>
+<p><strong>情况 A：hybrid 模式里的关键词分支</strong></p>
+<p>这时系统会把原始 query token 化，再构造成 FTS query：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">transcript reset archive flow</span><br></pre></td></tr></table></figure>
+
+<p>会变成更接近：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;transcript&quot; AND &quot;reset&quot; AND &quot;archive&quot; AND &quot;flow&quot;</span><br></pre></td></tr></table></figure>
+
+<p>当然，真正代码里只会保留符合 token 规则的词。核心点是：</p>
+<blockquote>
+<p><strong>默认是 token 级匹配，不是正则表达式匹配。</strong></p>
+</blockquote>
+<p>然后 SQLite 用：</p>
+<ul>
+<li><code>MATCH</code> 找命中的 chunk</li>
+<li><code>bm25(...)</code> 给每个结果排序</li>
+</ul>
+<p>BM25 可以粗略理解成：</p>
+<ul>
+<li>命中的关键词越关键，分越高</li>
+<li>在少量 chunk 里出现的稀有词，权重更高</li>
+<li>更短、更聚焦的 chunk 往往更占优</li>
+<li>更像“搜索排序”，不是“语义理解”</li>
+</ul>
+<p><strong>情况 B：真正的 <code>FTS-only</code> 模式</strong></p>
+<p>这时 OpenClaw 还会多做一步“口语 query -&gt; 关键词”的提炼。</p>
+<p>比如用户问：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">之前讨论的那个 session reset 归档方案</span><br></pre></td></tr></table></figure>
+
+<p>系统不会直接把整句原样拿去搜，而是会先尽量抽出更像关键词的词，例如：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[&quot;session&quot;, &quot;reset&quot;, &quot;归档&quot;, &quot;方案&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>然后对这些词<strong>分别搜索</strong>，再把结果合并去重。</p>
+<p>这里要特别注意：</p>
+<blockquote>
+<p><code>FTS-only</code> 不是把这些词重新拼成一个巨大的 <code>AND</code> 查询，而是“每个词各搜一次，再合并结果”。</p>
+</blockquote>
+<p>这样做的原因也很务实：</p>
+<ul>
+<li>用户口语问题里常常带很多无效词</li>
+<li>如果全都强行 <code>AND</code> 在一起，容易一个结果都搜不到</li>
+<li>分开搜再合并，更适合“之前那个方案”“昨天提过的那个问题”这类自然语言问法</li>
+</ul>
+<p>流程更像这样：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;用户 query&quot;] --&gt; B{&quot;有 embedding?&quot;}
+    B --&gt;|有| C[&quot;构造 FTS query&quot;]
+    B --&gt;|没有| D[&quot;抽关键词&quot;] --&gt; E[&quot;逐词 FTS&quot;] --&gt; F[&quot;合并去重&quot;]
+    C --&gt; G[&quot;FTS5 MATCH&quot;]
+    F --&gt; G
+    G --&gt; H[&quot;BM25&quot;] --&gt; I[&quot;返回 snippet + line + score&quot;]</div>
+
+<p>所以这部分最短可以记成：</p>
+<ul>
+<li><strong>FTS &#x3D; 全文检索</strong></li>
+<li><strong>FTS-only &#x3D; 只做全文检索，不做向量检索</strong></li>
+<li><strong>FTS 不是 regex</strong></li>
+<li><strong>OpenClaw 在 FTS-only 下会先把自然语言问题压成更像关键词的查询</strong></li>
+</ul>
+<h4 id="6-3-4-向量检索是怎么做的？是不是-RAG-那套？"><a href="#6-3-4-向量检索是怎么做的？是不是-RAG-那套？" class="headerlink" title="6.3.4 向量检索是怎么做的？是不是 RAG 那套？"></a>6.3.4 向量检索是怎么做的？是不是 RAG 那套？</h4><p><strong>是广义上的 RAG retrieval 思路，但不是“让大模型现场理解全文再检索”。</strong></p>
+<p>它的流程是经典 embedding 检索：</p>
+<ol>
+<li><strong>索引阶段</strong><ul>
+<li>对每个 memory chunk 生成 embedding</li>
+<li>把向量存进 <code>chunks_vec</code>，也把 JSON 形式留在 <code>chunks</code></li>
+</ul>
+</li>
+<li><strong>查询阶段</strong><ul>
+<li>对用户 query 再生成一个 query embedding</li>
+<li>用余弦相似度找最接近的 chunk</li>
+</ul>
+</li>
+<li><strong>结果阶段</strong><ul>
+<li>返回 chunk 的 <code>snippet + path + line range + score</code></li>
+</ul>
+</li>
+</ol>
+<p>这里“向量检索”用到的模型是 <strong>embedding model&#x2F;provider</strong>，不是聊天大模型直接下场做排序。<br>源码里支持的 provider 包括：</p>
+<ul>
+<li><code>openai</code></li>
+<li><code>gemini</code></li>
+<li><code>voyage</code></li>
+<li><code>mistral</code></li>
+<li><code>local</code>（<code>node-llama-cpp</code> 本地 embedding）</li>
+</ul>
+<p>如果 <code>sqlite-vec</code> 扩展可用，会直接在 SQLite 里做：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> vec_distance_cosine(v.embedding, queryVec)</span><br></pre></td></tr></table></figure>
+
+<p>如果向量扩展不可用，代码还会退回到：</p>
+<ul>
+<li>把 chunks 表里的 embedding 读出来</li>
+<li>在 JS 里做 <code>cosineSimilarity()</code></li>
+</ul>
+<p>所以它是很典型的“embedding + cosine similarity”检索，不是“调用一个大模型把所有 memory 读一遍后帮你判断哪段相关”。</p>
+<h4 id="6-3-5-最后怎么把-FTS-和-vector-合在一起"><a href="#6-3-5-最后怎么把-FTS-和-vector-合在一起" class="headerlink" title="6.3.5 最后怎么把 FTS 和 vector 合在一起"></a>6.3.5 最后怎么把 FTS 和 vector 合在一起</h4><p>如果 embedding provider 可用，默认不是“只看向量”或“只看关键词”，而是 <strong>hybrid search</strong>：</p>
+<ol>
+<li>先做一遍关键词召回</li>
+<li>再做一遍向量召回</li>
+<li>按 chunk id 合并去重</li>
+<li>用权重做混合打分</li>
+<li>再做可选的 MMR 和 temporal decay</li>
+</ol>
+<p>所以它的排序逻辑更像：</p>
+<figure class="highlight ts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">finalScore =</span><br><span class="line">  vectorWeight * vectorScore +</span><br><span class="line">  textWeight * textScore</span><br></pre></td></tr></table></figure>
+
+<p>然后再额外考虑：</p>
+<ul>
+<li><strong>MMR</strong><ul>
+<li>避免返回一堆高度重复的 chunk</li>
+</ul>
+</li>
+<li><strong>temporal decay</strong><ul>
+<li>让更近的 memory 适度加权</li>
+</ul>
+</li>
+</ul>
+<p>所以 <code>memory_search()</code> 返回的不是“最像的一篇文件”，而是：</p>
+<blockquote>
+<p><strong>几个综合相关度最高、又尽量不重复的 chunk 命中。</strong></p>
+</blockquote>
+<h4 id="6-3-6-这和“经典-RAG”有什么异同"><a href="#6-3-6-这和“经典-RAG”有什么异同" class="headerlink" title="6.3.6 这和“经典 RAG”有什么异同"></a>6.3.6 这和“经典 RAG”有什么异同</h4><p>相同点：</p>
+<ul>
+<li>都会先切 chunk</li>
+<li>都会建 embedding</li>
+<li>都会在 query 时做相似度召回</li>
+</ul>
+<p>不同点：</p>
+<ul>
+<li>OpenClaw 这里是 <strong>SQLite 本地索引优先</strong><ul>
+<li>不是默认把长期记忆交给外部向量库</li>
+</ul>
+</li>
+<li>它是 <strong>FTS + vector 混合</strong><ul>
+<li>不是纯向量召回</li>
+</ul>
+</li>
+<li>返回结果后，agent 还要再走 <code>memory_get</code><ul>
+<li>不是直接把整份召回文档塞进 prompt</li>
+</ul>
+</li>
+<li>没有“生成式重写检索查询”的重型链路<ul>
+<li>更偏工程化、低延迟、可回退</li>
+</ul>
+</li>
+</ul>
+<p>所以把它理解成一句话最合适：</p>
+<blockquote>
+<p><strong>OpenClaw 的内置 memory manager，是一个偏工程实用主义的本地 hybrid RAG 检索器。</strong></p>
+</blockquote>
+<p>从工程角度看，它还有几个值得点出来的特征：</p>
+<ul>
+<li>默认 source 是 memory 文件，session transcript 可以作为可选 source</li>
+<li>支持 FTS 和 vector 混合打分</li>
+<li>有 watcher，memory 文件变化后会标记 dirty</li>
+<li>支持 <code>onSessionStart</code>、<code>onSearch</code>、interval 异步 sync</li>
+<li>snippet 有长度上限，不会把整篇文档扔回上下文</li>
+</ul>
+<p>这其实说明 OpenClaw 的长期记忆目标不是“最强召回率”，而是 <strong>“在 token 预算内稳定可用”</strong>。</p>
+<p>“为什么默认不自动全量注入，而是按需读取”，根本原因也在这里：</p>
+<ol>
+<li><strong><code>memory/*.md</code> 天然会无限增长</strong><br>每天一份日志，几个月后就可能非常大，不适合常驻 prompt。</li>
+<li><strong>大部分历史在大多数回合里都用不上</strong><br>真正相关的通常只是几个 chunk。</li>
+<li><strong>按需读取更省 token</strong><br>搜索先返回小 snippet，只有命中后才精读。</li>
+<li><strong>按需读取更安全</strong><br>不会因为默认注入，把无关但敏感的旧日志整包带进一次群聊或普通问答。</li>
+</ol>
+<p>所以这条链路的本质不是“先搜一下更高级”，而是一个非常务实的窗口治理设计：</p>
+<blockquote>
+<p><strong>长期记忆可以很多，但每一轮真正带进上下文的，只应该是当前问题需要的那几段。</strong></p>
+</blockquote>
+<h3 id="6-4-QMD-后端：外接更强检索，但保留-fallback"><a href="#6-4-QMD-后端：外接更强检索，但保留-fallback" class="headerlink" title="6.4 QMD 后端：外接更强检索，但保留 fallback"></a>6.4 QMD 后端：外接更强检索，但保留 fallback</h3><p>如果配置 <code>memory.backend = &quot;qmd&quot;</code>，OpenClaw 会用 <code>QmdMemoryManager</code> 做检索；但它不会把系统绑死在 QMD 上，而是包了一层 fallback：</p>
+<ul>
+<li>QMD 正常时，走 QMD</li>
+<li>QMD 挂了，自动退回内置 SQLite manager</li>
+</ul>
+<p>这个设计特别像 OpenClaw 整体的风格：<strong>新能力可以接，但基础路径必须稳定。</strong></p>
+<h3 id="6-5-memory-lancedb：另一种插件式长期记忆实现"><a href="#6-5-memory-lancedb：另一种插件式长期记忆实现" class="headerlink" title="6.5 memory-lancedb：另一种插件式长期记忆实现"></a>6.5 <code>memory-lancedb</code>：另一种插件式长期记忆实现</h3><p>仓库里还有一个 <code>memory-lancedb</code> 插件，它展示了另一种思路：</p>
+<ul>
+<li>用 LanceDB 存向量</li>
+<li><code>before_agent_start</code> 自动注入相关记忆</li>
+<li><code>agent_end</code> 自动从用户消息里抽取可捕获内容</li>
+</ul>
+<p>它的链路更接近经典“自动 recall &#x2F; 自动 capture”风格：</p>
+<div class="mermaid">flowchart LR
+    A[&quot;before_agent_start&quot;] --&gt; B[&quot;向量检索相关记忆&quot;]
+    B --&gt; C[&quot;prependContext 注入 prompt&quot;]
+    D[&quot;agent_end&quot;] --&gt; E[&quot;筛选用户消息里值得存的内容&quot;]
+    E --&gt; F[&quot;embedding + 去重 + 写入 LanceDB&quot;]</div>
+
+<p>这个插件不是默认主路径，但很适合放在文章里作为对比：</p>
+<ul>
+<li><strong>内置 memory-core</strong> 更偏“Markdown + 索引 + 工具调用”</li>
+<li><strong>memory-lancedb</strong> 更偏“自动记忆中间件”</li>
+</ul>
+<h3 id="6-6-session-memory：会话结束-切新对话时，把旧上下文沉淀成笔记"><a href="#6-6-session-memory：会话结束-切新对话时，把旧上下文沉淀成笔记" class="headerlink" title="6.6 session-memory：会话结束&#x2F;切新对话时，把旧上下文沉淀成笔记"></a>6.6 <code>session-memory</code>：会话结束&#x2F;切新对话时，把旧上下文沉淀成笔记</h3><p>除了 memory plugin，OpenClaw 还有一个很容易被忽略的内置 hook：<code>session-memory</code>。</p>
+<p>它会在 <code>/new</code> 或 <code>/reset</code> 触发时：</p>
+<ul>
+<li>找到刚刚结束的旧 transcript</li>
+<li>读取最近若干条 user &#x2F; assistant 消息</li>
+<li>可选地用 LLM 生成一个 slug</li>
+<li>写入 <code>memory/YYYY-MM-DD-&lt;slug&gt;.md</code></li>
+</ul>
+<p>它的价值不在于“自动摘要有多聪明”，而在于补上了一个很实用的缺口：</p>
+<blockquote>
+<p>当用户主动切新 session 时，OpenClaw 会把上一段对话留下一份可回看的 Markdown 痕迹，而不是让它只存在于 transcript 里。</p>
+</blockquote>
+<p>这和前面提到的 pre-compaction memory flush 形成了互补：</p>
+<ul>
+<li><strong>memory flush</strong> 解决“快压缩了，先把耐久信息落盘”</li>
+<li><strong>session-memory hook</strong> 解决“我要开新会话了，把旧上下文整理存档”</li>
+</ul>
+<hr>
+<h2 id="7-OpenClaw-做的几个关键工程考量"><a href="#7-OpenClaw-做的几个关键工程考量" class="headerlink" title="7. OpenClaw 做的几个关键工程考量"></a>7. OpenClaw 做的几个关键工程考量</h2><p>如果把源码里的实现抽象出来，我觉得 OpenClaw 关于“上下文记忆”最重要的工程判断有这几条。</p>
+<h3 id="7-1-不是所有记忆都应该进-prompt"><a href="#7-1-不是所有记忆都应该进-prompt" class="headerlink" title="7.1 不是所有记忆都应该进 prompt"></a>7.1 不是所有记忆都应该进 prompt</h3><p>OpenClaw 明确把信息分成三类：</p>
+<ul>
+<li><strong>必须常驻</strong>：<code>AGENTS.md</code>、<code>SOUL.md</code>、<code>USER.md</code> 这类稳定规则</li>
+<li><strong>当前回合需要</strong>：session transcript、最近工具结果</li>
+<li><strong>大概率用不上</strong>：历史日志、旧记忆、细碎证据</li>
+</ul>
+<p>第三类改成 tool retrieval，是整个系统能长期稳定运行的前提。</p>
+<h3 id="7-2-长期记忆的真相必须可审计、可手改"><a href="#7-2-长期记忆的真相必须可审计、可手改" class="headerlink" title="7.2 长期记忆的真相必须可审计、可手改"></a>7.2 长期记忆的真相必须可审计、可手改</h3><p>这是 Markdown source-of-truth 路线的根本原因。</p>
+<p>如果长期记忆只有向量库，系统虽然“智能”，但人很难检查：</p>
+<ul>
+<li>为什么模型记住了这件事？</li>
+<li>这条记忆从哪来的？</li>
+<li>它现在还是不是真实？</li>
+</ul>
+<p>OpenClaw 选择把长期记忆落到 Markdown，再围绕它建立索引，实际上是把“可维护性”放在了“炫技”前面。</p>
+<h3 id="7-3-上下文治理优先保护对话主线，不是平均裁剪"><a href="#7-3-上下文治理优先保护对话主线，不是平均裁剪" class="headerlink" title="7.3 上下文治理优先保护对话主线，不是平均裁剪"></a>7.3 上下文治理优先保护对话主线，不是平均裁剪</h3><p>从 <code>history limit</code>、<code>tool-result-context-guard</code>、<code>context-pruning</code> 到 <code>compaction-safeguard</code>，它的策略都非常一致：</p>
+<ul>
+<li>先保 user &#x2F; assistant 主线</li>
+<li>再压 tool result</li>
+<li>最后才 compaction</li>
+</ul>
+<p>这比“按 token 平均截断历史”要稳得多。</p>
+<h3 id="7-4-压缩不是终点，压缩前后都要补动作"><a href="#7-4-压缩不是终点，压缩前后都要补动作" class="headerlink" title="7.4 压缩不是终点，压缩前后都要补动作"></a>7.4 压缩不是终点，压缩前后都要补动作</h3><p>OpenClaw 没把 compaction 看成一个黑盒摘要动作，而是加了两段前后处理：</p>
+<ul>
+<li><strong>压缩前</strong>：memory flush，把可持久化信息写到 memory 文件</li>
+<li><strong>压缩后</strong>：post-compaction context refresh，把关键规则补回 session</li>
+</ul>
+<p>这个思路本质上是在承认一件事：</p>
+<blockquote>
+<p>摘要一定会丢信息，所以要围着 compaction 设计一个完整生命周期。</p>
+</blockquote>
+<h3 id="7-5-让-Pi-负责“引擎”，让-OpenClaw-负责“策略”"><a href="#7-5-让-Pi-负责“引擎”，让-OpenClaw-负责“策略”" class="headerlink" title="7.5 让 Pi 负责“引擎”，让 OpenClaw 负责“策略”"></a>7.5 让 Pi 负责“引擎”，让 OpenClaw 负责“策略”</h3><p>最后这一点最像系统设计上的主心骨。</p>
+<p>Pi 负责：</p>
+<ul>
+<li>session</li>
+<li>transcript persistence</li>
+<li>tool loop</li>
+<li>auto-compaction</li>
+</ul>
+<p>OpenClaw 负责：</p>
+<ul>
+<li>什么文件注入</li>
+<li>什么历史保留</li>
+<li>什么结果裁剪</li>
+<li>什么时候 flush memory</li>
+<li>什么时候走长期记忆检索</li>
+</ul>
+<p>这种分层很重要，因为它让 OpenClaw 可以持续演进自己的上下文策略，而不需要自己重写一套 Agent runtime。</p>
+<hr>
+<h2 id="8-小结"><a href="#8-小结" class="headerlink" title="8. 小结"></a>8. 小结</h2><p>OpenClaw 的“上下文记忆”本质上不是一个 memory 模块，而是一整条上下文生命周期：</p>
+<ol>
+<li><strong>用 workspace 文件定义稳定身份与规则</strong></li>
+<li><strong>用 Pi SessionManager 持久化短期会话</strong></li>
+<li><strong>用 guard &#x2F; pruning &#x2F; compaction 控制窗口</strong></li>
+<li><strong>用 memory tools 和 memory plugin 做长期召回</strong></li>
+</ol>
+<p>所以值得学习的地方，不是“它有记忆”，而是它把 <strong>什么该常驻、什么该压缩、什么该落盘、什么该按需召回</strong> 这几件事拆得很清楚。</p>
+</article><div class="post-copyright"><div class="post-copyright__author_group"><a class="post-copyright__author_img" href="/about/"><img class="post-copyright__author_img_front" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"></a><div class="post-copyright__author_name">HDi - 随便记</div><div class="post-copyright__author_desc"></div></div><div class="post-tools" id="post-tools"><div class="post-tools-left"><div id="quit-box" onclick="RemoveRewardMask()"></div><div class="post-reward"><div class="reward-button" title="赞赏作者" onclick="AddRewardMask()"><i class="solitude fa-solid fa-heart"></i>赞赏作者</div><div class="reward-main"><ul class="reward-all"><span class="reward-title">感谢你的欣赏！</span><ul class="reward-group"><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/wechatpay.JPG" alt="wechat" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">wechat</div></li><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/alipay.JPG" alt="alipay" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">alipay</div></li></ul><a class="reward-main-btn" href="/about/"><div class="reward-text">赞赏名单</div><div class="reward-dec">因为你的支持，我感受到写文章的价值。</div></a></ul></div></div><script>function RemoveRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "none";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "none";
+    }
+}
+
+function AddRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "flex";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "flex";
+    }
+}</script></div></div><div class="social-share"><a class="social-share-ico icon-qq" target="_blank" rel="noopener" href="https://connect.qq.com/widget/shareqq/index.html?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F13%2F2026-03-13-%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E8%25AE%25B0%25E5%25BF%2586%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AD%EF%BC%89%EF%BC%9A%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86&amp;desc=undefined&amp;summary=undefined&amp;site=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AD%EF%BC%89%EF%BC%9A%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86&amp;pics=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-13.webp" title="分享到QQ"><i class="solitude fab fa-qq"></i></a><a class="social-share-ico icon-weibo" target="_blank" rel="noopener" href="http://service.weibo.com/share/share.php?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F13%2F2026-03-13-%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E8%25AE%25B0%25E5%25BF%2586%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AD%EF%BC%89%EF%BC%9A%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86&amp;pic=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-13.webp" title="分享到微博"><i class="solitude fab fa-weibo"></i></a><div class="social-share-ico icon-link" onclick="utils.copy(&quot;http://example.com/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/&quot;)" title="复制文章链接"><i class="solitude fas fa-link"></i></div><div class="social-share-ico icon-qrcode" title="使用手机扫码阅读这篇文章"><i class="solitude fas fa-qrcode"></i><div class="share-main"><div class="share-main-all"><div id="qrcode"></div><div class="reward-dec">使用手机扫码阅读这篇文章</div></div></div><script pjax>typeof QRCode === 'function' && new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/');
+window.addEventListener('DOMContentLoaded', () => {
+    new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/');
+});
+</script></div></div><div class="post-copyright__notice"><span class="post-copyright-info">本文是原创文章，采用<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">CC BY-NC-SA 4.0</a>协议，完整转载请注明来自<a href="/">HDi - 随便记</a></span></div></div><div class="post-tools-right"><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型<span class="tagsPageCount">13</span></span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw<span class="tagsPageCount">8</span></span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析<span class="tagsPageCount">8</span></span></a></div></div></div><nav class="needEndHide pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">OpenClaw 设计解析（七）：插件系统</div></div></a></div><div class="next-post pull-right"><a href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="solitude fa-solid fa-star"></i><span>喜欢这篇的人也看了</span><div class="relatedPosts-link"><a onclick="event.preventDefault(); toRandomPost();" href="javascript:void(0);" rel="external nofollow" data-pjax-state="">随便逛逛</a></div></div><div class="relatedPosts-list"><div><a href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（八）：安全模型</div></div></a></div><div><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（七）：插件系统</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><div class="author-info__top-group"><div class="author-info__sayhi" id="author-info__sayhi" onclick="sco.changeSayHelloText()">sayhello.morning</div></div></div><div class="avatar-img-group"><img class="avatar-img" alt="头像" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><div class="avatar-sticker"><img class="avatar-sticker-img" src="https://file-1305436646.file.myqcloud.com/blog-icon/EMOJI-44.png" alt="心情贴纸"></div></div><div class="author-info__description_group"><div class="author-info__description">分享自己对技术成长的<b>总结梳理</b>，对新事物或者爱好的<b>探索历程</b>。</div><div class="author-info__description2">相信你可以在这里找到对你有用的知识和教程。</div></div><div class="author-info__bottom-group"><a class="author-info__bottom-group-left" href="/about/"><div class="author-info__name">HDi</div><div class="author-info__desc"></div></a><div class="card-info-social-icons is-center"><a class="social-icon" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a></div></div></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="solitude fa-solid fa-bars"></i><span>文章目录</span></div><div class="toc-content" id="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#OpenClaw-%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%85%AD%EF%BC%89%EF%BC%9A%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86"><span class="toc-text">OpenClaw 设计解析（六）：上下文记忆</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%88%E7%9C%8B%E5%85%A8%E8%B2%8C%EF%BC%9AOpenClaw-%E7%9A%84%E8%AE%B0%E5%BF%86%E4%B8%8D%E6%98%AF%E4%B8%80%E5%B1%82%EF%BC%8C%E8%80%8C%E6%98%AF%E5%9B%9B%E5%B1%82"><span class="toc-text">1. 先看全貌：OpenClaw 的记忆不是一层，而是四层</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Pi-%E6%8F%90%E4%BE%9B%E7%9A%84%E5%BA%95%E5%BA%A7%EF%BC%9ASession%E3%80%81%E6%8C%81%E4%B9%85%E5%8C%96%E3%80%81%E8%87%AA%E5%8A%A8%E5%8E%8B%E7%BC%A9"><span class="toc-text">2. Pi 提供的底座：Session、持久化、自动压缩</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-createAgentSession-%EF%BC%9APi-%E8%B4%9F%E8%B4%A3%E2%80%9C%E6%89%A7%E8%A1%8C%E5%BE%AA%E7%8E%AF%E2%80%9D"><span class="toc-text">2.1 createAgentSession()：Pi 负责“执行循环”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-%E6%B6%88%E6%81%AF%E5%BA%8F%E5%88%97%E6%98%AF%E6%80%8E%E4%B9%88%E7%AE%A1%E7%90%86%E7%9A%84"><span class="toc-text">2.1.1 消息序列是怎么管理的</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-tool-call-%E5%BE%AA%E7%8E%AF%E6%98%AF%E6%80%8E%E4%B9%88%E8%B7%91%E8%B5%B7%E6%9D%A5%E7%9A%84"><span class="toc-text">2.1.2 tool call 循环是怎么跑起来的</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-transcript-%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">2.1.3 transcript 到底是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-auto-compaction-%E7%9A%84%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">2.1.4 auto_compaction 的结果是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-5-%E6%97%A2%E7%84%B6-Pi-%E4%BC%9A-auto-compaction%EF%BC%8C%E4%B8%BA%E4%BB%80%E4%B9%88-OpenClaw-%E8%BF%98%E8%A6%81%E8%87%AA%E5%B7%B1%E8%A3%81%E5%89%AA"><span class="toc-text">2.1.5 既然 Pi 会 auto-compaction，为什么 OpenClaw 还要自己裁剪</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-SessionManager%EF%BC%9APi-%E8%B4%9F%E8%B4%A3%E6%8A%8A%E7%9F%AD%E6%9C%9F%E8%AE%B0%E5%BF%86%E8%90%BD%E5%88%B0%E7%A3%81%E7%9B%98"><span class="toc-text">2.2 SessionManager：Pi 负责把短期记忆落到磁盘</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Pi-%E7%9A%84-extension-%E6%9C%BA%E5%88%B6%EF%BC%9A%E7%BB%99-OpenClaw-%E7%95%99%E4%BA%86%E2%80%9C%E4%B8%8A%E4%B8%8B%E6%96%87%E6%94%B9%E9%80%A0%E7%82%B9%E2%80%9D"><span class="toc-text">2.3 Pi 的 extension 机制：给 OpenClaw 留了“上下文改造点”</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-OpenClaw-%E5%A6%82%E4%BD%95%E7%BB%84%E8%A3%85%E4%B8%80%E6%AC%A1%E8%BF%90%E8%A1%8C%E7%9A%84%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-text">3. OpenClaw 如何组装一次运行的上下文</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%A8%B3%E5%AE%9A%E4%B8%8A%E4%B8%8B%E6%96%87%E6%9D%A5%E8%87%AA-workspace-bootstrap-files"><span class="toc-text">3.1 稳定上下文来自 workspace bootstrap files</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-OpenClaw-%E5%AF%B9-bootstrap-%E6%B3%A8%E5%85%A5%E6%9C%89%E6%98%8E%E7%A1%AE%E7%9A%84-token-%E9%A2%84%E7%AE%97%E6%84%8F%E8%AF%86"><span class="toc-text">3.2 OpenClaw 对 bootstrap 注入有明确的 token 预算意识</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%8E%86%E5%8F%B2%E6%B6%88%E6%81%AF%E4%B8%8D%E4%BC%9A%E7%9B%B4%E6%8E%A5%E7%85%A7%E6%90%AC%EF%BC%8C%E8%80%8C%E6%98%AF%E5%85%88%E6%B8%85%E6%B4%97%E5%86%8D%E6%9B%BF%E6%8D%A2"><span class="toc-text">3.3 历史消息不会直接照搬，而是先清洗再替换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-Hook-%E5%8F%AF%E4%BB%A5%E5%9C%A8-prompt-%E6%9C%80%E5%90%8E%E4%B8%80%E6%AD%A5%E6%8F%92%E5%85%A5%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-text">3.4 Hook 可以在 prompt 最后一步插入上下文</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E7%9F%AD%E6%9C%9F%E8%AE%B0%E5%BF%86%EF%BC%9ASession-%E5%B0%B1%E6%98%AF-Agent-%E7%9A%84%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BF%86"><span class="toc-text">4. 短期记忆：Session 就是 Agent 的工作记忆</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%88%86%E6%88%90-sessions-json-%E5%92%8C-jsonl-%E4%B8%A4%E5%B1%82"><span class="toc-text">4.1 为什么要分成 sessions.json 和 *.jsonl 两层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Session-%E4%B8%8D%E6%98%AF%E2%80%9C%E5%85%A8%E5%B1%80%E8%AE%B0%E5%BF%86%E2%80%9D%EF%BC%8C%E8%80%8C%E6%98%AF%E6%8C%89%E8%B7%AF%E7%94%B1%E9%9A%94%E7%A6%BB%E7%9A%84"><span class="toc-text">4.2 Session 不是“全局记忆”，而是按路由隔离的</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%8E%86%E5%8F%B2%E9%95%BF%E5%BA%A6%E4%B8%8D%E6%98%AF%E6%97%A0%E9%99%90%E5%A2%9E%E9%95%BF%EF%BC%8C%E8%80%8C%E6%98%AF%E6%8C%89%E5%9C%BA%E6%99%AF%E9%99%90%E5%88%B6"><span class="toc-text">4.3 历史长度不是无限增长，而是按场景限制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E7%AA%97%E5%8F%A3%E6%B2%BB%E7%90%86%EF%BC%9AOpenClaw-%E4%B8%8D%E6%98%AF%E7%AD%89%E7%88%86%E4%BA%86%E5%86%8D%E5%8E%8B%E7%BC%A9%EF%BC%8C%E8%80%8C%E6%98%AF%E4%B8%89%E9%81%93%E4%BF%9D%E9%99%A9%E4%B8%80%E8%B5%B7%E4%B8%8A"><span class="toc-text">5. 窗口治理：OpenClaw 不是等爆了再压缩，而是三道保险一起上</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9A%E5%8D%95%E4%B8%AA%E5%A4%A7-tool-result-%E5%85%88%E5%88%AB%E6%8A%8A%E7%AA%97%E5%8F%A3%E6%89%93%E7%88%86"><span class="toc-text">5.1 第一层：单个大 tool result 先别把窗口打爆</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E8%80%81%E6%97%A7%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C%E5%81%9A-pruning%EF%BC%8C%E4%B8%8D%E7%A2%B0%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%AF%B9%E8%AF%9D%E9%AA%A8%E6%9E%B6"><span class="toc-text">5.2 第二层：老旧工具结果做 pruning，不碰真正的对话骨架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-1-%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E4%BC%9A%E8%A7%A6%E5%8F%91"><span class="toc-text">5.2.1 什么时候会触发</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-2-%E5%AE%83%E4%BC%9A%E5%8A%A8%E5%93%AA%E4%BA%9B%E6%B6%88%E6%81%AF"><span class="toc-text">5.2.2 它会动哪些消息</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-3-%E2%80%9C%E8%BD%AF%E8%A3%81%E5%89%AA%E2%80%9D%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">5.2.3 “软裁剪”到底是什么</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-4-%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E4%BC%9A%E2%80%9C%E7%A1%AC%E6%B8%85%E7%A9%BA%E2%80%9D"><span class="toc-text">5.2.4 什么时候会“硬清空”</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-5-%E4%B8%80%E4%B8%AA%E7%9B%B4%E8%A7%82%E4%BE%8B%E5%AD%90"><span class="toc-text">5.2.5 一个直观例子</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E7%9C%9F%E7%9A%84%E5%BF%AB%E5%8E%8B%E7%BC%A9%E4%BA%86%EF%BC%8C%E5%85%88%E5%81%9A%E4%B8%80%E6%AC%A1%E2%80%9Cmemory-flush%E2%80%9D"><span class="toc-text">5.3 第三层：真的快压缩了，先做一次“memory flush”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-Compaction-%E4%B8%8D%E5%8F%AA%E6%98%AF%E6%91%98%E8%A6%81%EF%BC%8C%E8%80%8C%E6%98%AF%E2%80%9C%E5%A2%9E%E5%BC%BA%E8%BF%87%E7%9A%84%E6%91%98%E8%A6%81%E2%80%9D"><span class="toc-text">5.4 Compaction 不只是摘要，而是“增强过的摘要”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%8E%8B%E7%BC%A9%E5%AE%8C%E4%BB%A5%E5%90%8E%EF%BC%8C%E5%86%8D%E6%8A%8A%E5%85%B3%E9%94%AE%E4%B8%8A%E4%B8%8B%E6%96%87%E6%8B%89%E5%9B%9E%E4%B8%80%E7%82%B9"><span class="toc-text">5.5 压缩完以后，再把关键上下文拉回一点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E9%95%BF%E6%9C%9F%E8%AE%B0%E5%BF%86%EF%BC%9AMarkdown-%E6%89%8D%E6%98%AF%E7%9C%9F%E7%9B%B8%EF%BC%8C%E7%B4%A2%E5%BC%95%E5%8F%AA%E6%98%AF%E5%8A%A0%E9%80%9F%E5%B1%82"><span class="toc-text">6. 长期记忆：Markdown 才是真相，索引只是加速层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%BB%98%E8%AE%A4%E8%AE%BE%E8%AE%A1%EF%BC%9AMarkdown-%E6%98%AF-source-of-truth"><span class="toc-text">6.1 默认设计：Markdown 是 source of truth</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%BB%98%E8%AE%A4-memory-plugin%EF%BC%9Amemory-core"><span class="toc-text">6.2 默认 memory plugin：memory-core</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E5%86%85%E7%BD%AE-memory-manager%EF%BC%9ASQLite-FTS-vector-%E6%B7%B7%E5%90%88%E6%A3%80%E7%B4%A2"><span class="toc-text">6.3 内置 memory manager：SQLite + FTS + vector 混合检索</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-1-%E2%80%9C%E6%8C%89-chunk-%E5%88%87%E5%88%86%E2%80%9D%E6%98%AF%E4%B8%8D%E6%98%AF%E6%8C%89-%E6%A0%87%E9%A2%98%E5%88%87%EF%BC%9F"><span class="toc-text">6.3.1 “按 chunk 切分”是不是按 ## 标题切？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-2-%E2%80%9C%E5%86%99%E8%BF%9B%E5%86%85%E7%BD%AE%E7%B4%A2%E5%BC%95%E2%80%9D%E5%88%B0%E5%BA%95%E6%98%AF%E5%86%99%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-text">6.3.2 “写进内置索引”到底是写了什么</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-3-%E5%85%B3%E9%94%AE%E8%AF%8D%E6%90%9C%E7%B4%A2%E6%98%AF%E6%AD%A3%E5%88%99%E5%90%97%EF%BC%9F"><span class="toc-text">6.3.3 关键词搜索是正则吗？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-3-1-FTS-only-%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">6.3.3.1 FTS-only 到底是什么</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-3-2-%E5%AE%83%E5%AE%9E%E9%99%85%E6%80%8E%E4%B9%88%E6%90%9C%E7%B4%A2"><span class="toc-text">6.3.3.2 它实际怎么搜索</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-4-%E5%90%91%E9%87%8F%E6%A3%80%E7%B4%A2%E6%98%AF%E6%80%8E%E4%B9%88%E5%81%9A%E7%9A%84%EF%BC%9F%E6%98%AF%E4%B8%8D%E6%98%AF-RAG-%E9%82%A3%E5%A5%97%EF%BC%9F"><span class="toc-text">6.3.4 向量检索是怎么做的？是不是 RAG 那套？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-5-%E6%9C%80%E5%90%8E%E6%80%8E%E4%B9%88%E6%8A%8A-FTS-%E5%92%8C-vector-%E5%90%88%E5%9C%A8%E4%B8%80%E8%B5%B7"><span class="toc-text">6.3.5 最后怎么把 FTS 和 vector 合在一起</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-3-6-%E8%BF%99%E5%92%8C%E2%80%9C%E7%BB%8F%E5%85%B8-RAG%E2%80%9D%E6%9C%89%E4%BB%80%E4%B9%88%E5%BC%82%E5%90%8C"><span class="toc-text">6.3.6 这和“经典 RAG”有什么异同</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-QMD-%E5%90%8E%E7%AB%AF%EF%BC%9A%E5%A4%96%E6%8E%A5%E6%9B%B4%E5%BC%BA%E6%A3%80%E7%B4%A2%EF%BC%8C%E4%BD%86%E4%BF%9D%E7%95%99-fallback"><span class="toc-text">6.4 QMD 后端：外接更强检索，但保留 fallback</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-memory-lancedb%EF%BC%9A%E5%8F%A6%E4%B8%80%E7%A7%8D%E6%8F%92%E4%BB%B6%E5%BC%8F%E9%95%BF%E6%9C%9F%E8%AE%B0%E5%BF%86%E5%AE%9E%E7%8E%B0"><span class="toc-text">6.5 memory-lancedb：另一种插件式长期记忆实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-session-memory%EF%BC%9A%E4%BC%9A%E8%AF%9D%E7%BB%93%E6%9D%9F-%E5%88%87%E6%96%B0%E5%AF%B9%E8%AF%9D%E6%97%B6%EF%BC%8C%E6%8A%8A%E6%97%A7%E4%B8%8A%E4%B8%8B%E6%96%87%E6%B2%89%E6%B7%80%E6%88%90%E7%AC%94%E8%AE%B0"><span class="toc-text">6.6 session-memory：会话结束&#x2F;切新对话时，把旧上下文沉淀成笔记</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-OpenClaw-%E5%81%9A%E7%9A%84%E5%87%A0%E4%B8%AA%E5%85%B3%E9%94%AE%E5%B7%A5%E7%A8%8B%E8%80%83%E9%87%8F"><span class="toc-text">7. OpenClaw 做的几个关键工程考量</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E4%B8%8D%E6%98%AF%E6%89%80%E6%9C%89%E8%AE%B0%E5%BF%86%E9%83%BD%E5%BA%94%E8%AF%A5%E8%BF%9B-prompt"><span class="toc-text">7.1 不是所有记忆都应该进 prompt</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E9%95%BF%E6%9C%9F%E8%AE%B0%E5%BF%86%E7%9A%84%E7%9C%9F%E7%9B%B8%E5%BF%85%E9%A1%BB%E5%8F%AF%E5%AE%A1%E8%AE%A1%E3%80%81%E5%8F%AF%E6%89%8B%E6%94%B9"><span class="toc-text">7.2 长期记忆的真相必须可审计、可手改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E4%B8%8A%E4%B8%8B%E6%96%87%E6%B2%BB%E7%90%86%E4%BC%98%E5%85%88%E4%BF%9D%E6%8A%A4%E5%AF%B9%E8%AF%9D%E4%B8%BB%E7%BA%BF%EF%BC%8C%E4%B8%8D%E6%98%AF%E5%B9%B3%E5%9D%87%E8%A3%81%E5%89%AA"><span class="toc-text">7.3 上下文治理优先保护对话主线，不是平均裁剪</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E5%8E%8B%E7%BC%A9%E4%B8%8D%E6%98%AF%E7%BB%88%E7%82%B9%EF%BC%8C%E5%8E%8B%E7%BC%A9%E5%89%8D%E5%90%8E%E9%83%BD%E8%A6%81%E8%A1%A5%E5%8A%A8%E4%BD%9C"><span class="toc-text">7.4 压缩不是终点，压缩前后都要补动作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-%E8%AE%A9-Pi-%E8%B4%9F%E8%B4%A3%E2%80%9C%E5%BC%95%E6%93%8E%E2%80%9D%EF%BC%8C%E8%AE%A9-OpenClaw-%E8%B4%9F%E8%B4%A3%E2%80%9C%E7%AD%96%E7%95%A5%E2%80%9D"><span class="toc-text">7.5 让 Pi 负责“引擎”，让 OpenClaw 负责“策略”</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B0%8F%E7%BB%93"><span class="toc-text">8. 小结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="solitude fa-solid fa-map"></i><span>最近发布</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img alt="OpenClaw 设计解析（八）：安全模型" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp"></a><div class="content"><span class="title" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型">OpenClaw 设计解析（八）：安全模型</span><span class="article-recent_post_categories" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img alt="OpenClaw 设计解析（七）：插件系统" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp"></a><div class="content"><span class="title" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统">OpenClaw 设计解析（七）：插件系统</span><span class="article-recent_post_categories" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆"><img alt="OpenClaw 设计解析（六）：上下文记忆" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp"></a><div class="content"><span class="title" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆">OpenClaw 设计解析（六）：上下文记忆</span><span class="article-recent_post_categories" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"><img alt="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-12.webp"></a><div class="content"><span class="title" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</span><span class="article-recent_post_categories" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"><img alt="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-11.webp"></a><div class="content"><span class="title" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</span><span class="article-recent_post_categories" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/">大模型</span></div></div></div></div></div></div></main><footer id="footer"><div id="st-footer-bar"><div class="footer-logo"><span>HDi</span></div><div class="footer-bar-description">Articles from HDi.</div><a class="footer-bar-link" href="/about/">Learn more</a></div><div id="footer_deal"><a class="deal_link" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a><div class="nolazyload footer_mini_logo" id="footer_mini_logo" title="返回顶部" onclick="sco.toTop()"><img src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" alt="返回顶部"></div><a class="deal_link" target="_blank" rel="noopener" href="https://www.xiaohongshu.com/user/profile/5ffb06bf0000000001003e37" title="Xiaohongshu"><i class="solitude  fa fa-book"></i></a></div><div id="st-footer"></div><div id="footer-bar"><div class="footer-bar-links"><div class="footer-bar-left"><div class="copyright">© 2024 - 2026 By&nbsp;<a class="footer-bar-link" href="/">HDi</a></div></div><div class="footer-bar-right"><a class="footer-bar-link" target="_blank" rel="noopener" href="https://github.com/everfu/hexo-theme-solitude" alt="主题">主题</a></div></div></div></footer></div><!-- right_menu--><div id="rightMenu"><div class="rightMenu-group rightMenu-small"><div class="rightMenu-item" id="menu-backward"><i class="solitude fa-solid fa-arrow-left"></i></div><div class="rightMenu-item" id="menu-forward"><i class="solitude fa-solid fa-arrow-right"></i></div><div class="rightMenu-item" id="menu-refresh"><i class="solitude fa-solid fa-arrow-rotate-right"></i></div><div class="rightMenu-item" id="menu-top"><i class="solitude fa-solid fa-arrow-up"></i></div></div><div class="rightMenu-group rightMenu-line rightMenuPlugin"><div class="rightMenu-item" id="menu-copytext"><i class="solitude fa-solid fa-clone"></i><span>复制选中文本</span></div><div class="rightMenu-item" id="menu-pastetext"><i class="solitude fa-solid fa-clipboard"></i><span>粘贴文本</span></div><div class="rightMenu-item" id="menu-newwindow"><i class="solitude fa-regular fa-window-maximize"></i><span>新窗口打开</span></div><div class="rightMenu-item" id="menu-copylink"><i class="solitude fa-solid fa-link"></i><span>复制链接地址</span></div><div class="rightMenu-item" id="menu-copyimg"><i class="solitude fa-solid fa-clone"></i><span>复制此图片</span></div><div class="rightMenu-item" id="menu-downloadimg"><i class="solitude fa-solid fa-cloud-arrow-down"></i><span>下载此图片</span></div><div class="rightMenu-item" id="menu-music-toggle"><i class="solitude fa-solid fa-play"></i><span>播放音乐</span></div><div class="rightMenu-item" id="menu-music-back"><i class="solitude fa-solid fa-backward"></i><span>切换到上一首</span></div><div class="rightMenu-item" id="menu-music-forward"><i class="solitude fa-solid fa-forward"></i><span>切换到下一首</span></div><div class="rightMenu-item" id="menu-music-copyMusicName"><i class="solitude fa-solid fa-clone"></i><span>复制歌名</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-randomPost" onclick="toRandomPost()||rm.hideRightMenu()"><i class="solitude fas fa-tower-broadcast"></i><span>随机文章</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/categories/')||rm.hideRightMenu()"><i class="solitude fas fa-clone"></i><span>全部分类</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/tags/')||rm.hideRightMenu()"><i class="solitude fas fa-tags"></i><span>全部标签</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-darkmode" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span class="menu-darkmode-text">深色模式</span></div></div></div><div id="rightmenu-mask"></div><!-- inject body--><div><script src="/js/utils.js?v=2.0.6"></script><script src="/js/main.js?v=2.0.6"></script><script src="/js/third_party/waterfall.min.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pjax/0.2.8/pjax.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script><script src="/js/third_party/universe.min.js?v=2.0.6"></script><script>dark()
+</script><script src="https://cdnjs.cloudflare.com/ajax/libs/node-snackbar/0.1.16/snackbar.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.umd.min.js"></script><script>var meting_api = 'https://meting.qjqq.cn/?server=:server&type=:type&id=:id&auth=:auth&r=:r';</script><script src="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/meting/2.0.1/Meting.min.js"></script><script>const coverColorConfig = {
+    api: 'https://api.qjqq.cn/api/Imgcolor?img=',
+    time: 43200000
+}</script><script src="/js/covercolor/api.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.2.4/pace.min.js"></script><script src="/js/right_menu.js?v=2.0.6"></script><script>
+  (function() {
+    function getMermaidConfig(mode) {
+      var isDark = mode === 'dark';
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          fontSize: '14px',
+          /* Persona 配色基础变量 — 具体颜色由 CSS 按形状覆盖 */
+          primaryColor:       '#E30B20',
+          primaryBorderColor: '#000000',
+          primaryTextColor:   '#ffffff',
+          secondaryColor:     '#FFD700',
+          secondaryBorderColor:'#000000',
+          secondaryTextColor: '#000000',
+          tertiaryColor:      '#FF8C00',
+          tertiaryBorderColor:'#000000',
+          tertiaryTextColor:  '#000000',
+          lineColor:          '#000000',
+          textColor:          '#000000',
+          nodeBorder:         '#000000',
+          clusterBkg:         isDark ? '#2a2a2a' : '#fff8dc',
+          clusterBorder:      '#000000',
+          edgeLabelBackground:'transparent',
+          /* Sequence diagram */
+          actorBkg:           '#E30B20',
+          actorBorder:        '#000000',
+          actorTextColor:     '#ffffff',
+          actorLineColor:     '#000000',
+          signalColor:        '#000000',
+          signalTextColor:    '#000000',
+          labelBoxBkgColor:   '#FFD700',
+          labelBoxBorderColor:'#000000',
+          labelTextColor:     '#000000',
+          loopTextColor:      '#000000',
+          noteBkgColor:       '#FFD700',
+          noteBorderColor:    '#000000',
+          noteTextColor:      '#000000',
+          activationBkgColor: '#FF8C00',
+          activationBorderColor:'#000000',
+          sequenceNumberColor:'#ffffff',
+          background:         isDark ? '#1a1a1a' : '#ffffff'
+        }
+      };
+    }
+    var initMode = document.documentElement.getAttribute('data-theme') || 'light';
+    mermaid.initialize(getMermaidConfig(initMode));
+    /* Register theme change hook for dark/light toggle */
+    window.globalFn = window.globalFn || {};
+    window.globalFn.themeChange = window.globalFn.themeChange || {};
+    window.globalFn.themeChange.mermaid = function(mode) {
+      mermaid.initialize(getMermaidConfig(mode));
+      document.querySelectorAll('.mermaid[data-processed]').forEach(function(el) {
+        el.removeAttribute('data-processed');
+      });
+      mermaid.run();
+    };
+  })();
+</script>
+<div class="js-pjax"><script>mermaid.run();</script></div></div><!-- pjax--><script>const pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: ['title','#body-wrap','#site-config','meta[name="description"]','.js-pjax','meta[property^="og:"]','#config-diff'],
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+})
+
+document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+})
+
+document.addEventListener('pjax:complete', () => {
+    window.refreshFn()
+
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+        const newScript = document.createElement('script')
+        const content = item.text || item.textContent || item.innerHTML || ""
+        Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        newScript.appendChild(document.createTextNode(content))
+        item.parentNode.replaceChild(newScript, item)
+    })
+
+    GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+})
+
+document.addEventListener('pjax:error', (e) => {
+    if (e.request.status === 404) {
+        pjax.loadUrl('/404.html')
+    }
+})</script><!-- theme--><script>initTheme = () => {
+    let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const cachedMode = utils.saveToLocal.get('theme');
+    if (cachedMode === undefined) {
+        const nowMode =
+            isDarkMode ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', nowMode);
+    } else {
+        document.documentElement.setAttribute('data-theme', cachedMode);
+    }
+    typeof rm === 'object' && rm.mode(cachedMode === 'dark' && isDarkMode)
+}
+initTheme()</script><!-- google adsense--><!-- search--><!-- Tianli-Talk--><!-- music--><div class="needEndHide" id="nav-music" onclick="sco.musicToggle()"><div id="nav-music-hoverTips">音乐已暂停</div><meting-js id="12344278889" server="netease" type="playlist" mutex="true" preload="none" data-lrctype="0" order="random" theme="var(--efu-main)"></meting-js></div></body></html><script>const posts=["2026/03/15/2026-03-15-安全模型/","2026/03/14/2026-03-14-插件系统/","2026/03/13/2026-03-13-上下文记忆/","2026/03/12/2026-03-12-Agent运行时/","2026/03/11/2026-03-11-多通道架构/","2026/03/10/2026-03-10-Gateway/","2026/03/07/2026-03-07-CLI/","2026/03/02/2026-03-02-项目概览与架构全景/","2025/08/20/2025-08-20-大模型 Agent 实践/","2025/06/09/2025-06-09-大模型 Rag 实践/","2025/02/09/2025-02-09-交易系统构建/","2024/12/15/2024-12-15-比特币价值分析 copy/","2024/12/14/2024-12-14-投资交易初探/","2024/12/13/2024-12-13-加密货币概览/","2024/08/19/2024-08-19-大模型 Fine-tuning 实践/","2024/07/03/2024-07-03-解析大型语言模型的高效训练与推理之道/","2024/06/03/2024-06-03-《全面理解机器智能与生成式 AI 加速的新工业革命》/","2024/05/25/2024-05-25-faas-本地调试/","2024/05/24/2024-05-24-faas-静态页面/","2024/05/23/2024-05-23-faas-数据库能力/","2024/05/22/2024-05-22-faas-服务治理/","2024/05/21/2024-05-21-faas-编译部署/","2023/10/19/2023-10-19-faas-运行时/","2023/10/16/2023-10-16-faas-整体设计/","2023/08/14/2023-08-14-《富爸爸穷爸爸》读书笔记/","2023/02/03/2023-02-03-laf平台学习/","2022/10/14/2022-10-14-NodeJS学习/","2022/05/01/2022-05-01-webpack构建提速插件/","2022/04/14/2022-04-14-webpack tree shaking 记录/","2022/02/10/2022-02-10-NestJS设计思想/","2022/01/28/2022-01-28-前端项目构建速度优化调研/","2021/12/04/2021-12-04-px2rem或px2vw响应式方案探究/","2021/10/20/2021-10-20-hexo源码分析（四）/","2021/10/19/2021-10-19-hexo源码分析（三）/","2021/10/11/2021-10-11-hexo源码分析（二）/","2021/09/30/2021-09-30-hexo源码分析（一）/","2021/07/29/2021-07-29-可视化上报埋点方案/","2021/07/25/2021-07-25-脚手架设计/","2021/07/21/2021-07-21-业务基础库封装设计/","2021/06/10/2021-06-10-JWT梳理/","2020/12/07/2020-12-07-Vue生命周期/","2020/12/07/2020-12-07-Vuex整理/","2020/12/07/2020-12-07-Vue-Router/","2020/12/07/2020-12-07-Vue整理/","2020/12/06/2020-12-06-TCP协议/","2020/12/05/2020-12-05-POST和GET区别/","2020/12/04/2020-12-04-OSI模型整理/","2020/12/03/2020-12-03-微任务和宏任务/","2020/12/03/2020-12-03-JavaScript的面向对象/","2020/12/03/2020-12-03-JavaScript总结/","2020/12/02/2020-12-02-HTTP协议/","2020/12/01/2020-12-01-Cookie和Session对比/","2020/11/03/2020-11-03-常见性能优化手段/","2020/11/02/2020-11-02-浏览器同源跨域/","2020/11/01/2020-11-01-断点下载方案/","2020/05/07/2020-05-07-浏览器重绘和requestAnimationFrame/","2019/08/03/2019-08-03-vue-cli源码学习2.x/","2019/07/24/2019-07-24-vue-cli源码学习1.x/","2019/07/12/2019-07-12-Git分支相关/","2019/03/12/2019-03-12-使用webpack做一次项目优化/","2019/02/18/2019-02-18-解决回调地狱/","2019/01/19/2019-01-19-内联元素的一些探究/","2018/12/02/2018-12-02-论文查询平台/","2018/09/18/2018-09-18-CSS绘制三道杠和小圆点/","2018/09/10/2018-09-10-DDA算法和Bresenham算法画线/","2018/09/07/2018-09-07-CSS-iScroll实现水平滚动实例/","2018/09/06/2018-9-6小结/","2018/04/24/2018-04-24-JS原型链/","2018/04/16/2018-04-16-动手写一个hexo主题（下）/","2018/03/31/2018-03-31-gulp整理/","2018/03/28/2018-03-28-动手写一个hexo主题（上）/","2018/03/24/2018-03-24-npm的一些简单整理/","2018/03/17/2018-03-17-background属性和img标签/","2018/03/14/2018-03-14-如何实现一个轮播图/","2018/03/10/2018-03-10-Express+MySQL实现登陆界面/","2018/03/09/2018-03-09-数字图像处理和PS/","2018/03/06/2018-03-06-模板引擎ejs+gulp的使用/","2018/01/21/2018-1-21-JS对象整理/","2018/01/11/2018-1-11-实现一个问卷平台/","2017/10/24/2017-10-24-如何实现一个导航栏/","2017/10/18/2017-10-18-jQuery和原生DOM操作对比/","2017/10/10/2017-10-10-DOM操作/","2017/09/28/2017-09-28-页面常用布局整理/","2017/09/21/2017-09-21-hexo博客构建/"];function toRandomPost(){ pjax.loadUrl(GLOBAL_CONFIG.root+posts[Math.floor(Math.random()*posts.length)]); }</script>

@@ -1,0 +1,1107 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行 | HDi - 随便记</title><noscript>开启JavaScript才能访问本站哦~</noscript><link rel="icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><!-- index.css--><link rel="stylesheet" href="/css/index.css?v=2.0.6"><!-- inject head--><link rel="canonical" href="http://example.com/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"><!-- aplayer--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.css"><!-- swiper--><!-- fancybox ui--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.min.css"><!-- katex--><!-- Open Graph--><meta name="description" content="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行 OpenClaw Agent 运行时：Pi 框架集成、工具组装、策略管线、事件流、Subagent 和 Agent 持续运行。 本篇介绍 OpenClaw 的 Agent 运行时：Pi 框架集成、Agent 启动流程、"><!-- pwa--><meta name="apple-mobile-web-app-capable" content="HDi - 随便记"><meta name="theme-color" content="var(--efu-main)"><meta name="apple-mobile-web-app-status-bar-style" content="var(--efu-main)"><link rel="bookmark" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><link rel="apple-touch-icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" sizes="180x180"><script>console.log(' %c Solitude %c ' + '2.0.6' + ' %c https://github.com/everfu/hexo-theme-solitude',
+    'background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff',
+    'background:#ff9a9a ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff',
+    'background:unset ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff')
+</script><script defer src="https://cloud.umami.is/script.js" data-website-id="74f224fa-d3eb-4426-be2a-a67cbb900e1c"></script><script>(()=>{
+        const saveToLocal = {
+            set: function setWithExpiry(key, value, ttl) {
+                if (ttl === 0)
+                    return
+                const now = new Date()
+                const expiryDay = ttl * 86400000
+                const item = {
+                    value: value,
+                    expiry: now.getTime() + expiryDay
+                }
+                localStorage.setItem(key, JSON.stringify(item))
+            },
+            get: function getWithExpiry(key) {
+                const itemStr = localStorage.getItem(key)
+    
+                if (!itemStr) {
+                    return undefined
+                }
+                const item = JSON.parse(itemStr)
+                const now = new Date()
+    
+                if (now.getTime() > item.expiry) {
+                    localStorage.removeItem(key)
+                    return undefined
+                }
+                return item.value
+            }
+        };
+        window.utils = {
+            saveToLocal: saveToLocal,
+            getCSS: (url, id = false) => new Promise((resolve, reject) => {
+              const link = document.createElement('link')
+              link.rel = 'stylesheet'
+              link.href = url
+              if (id) link.id = id
+              link.onerror = reject
+              link.onload = link.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                link.onload = link.onreadystatechange = null
+                resolve()
+              }
+              document.head.appendChild(link)
+            }),
+            getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+              const script = document.createElement('script')
+              script.src = url
+              script.async = true
+              script.onerror = reject
+              script.onload = script.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                script.onload = script.onreadystatechange = null
+                resolve()
+              }
+    
+              Object.keys(attr).forEach(key => {
+                script.setAttribute(key, attr[key])
+              })
+    
+              document.head.appendChild(script)
+            }),
+            addGlobalFn: (key, fn, name = false, parent = window) => {
+                const globalFn = parent.globalFn || {}
+                const keyObj = globalFn[key] || {}
+        
+                if (name && keyObj[name]) return
+        
+                name = name || Object.keys(keyObj).length
+                keyObj[name] = fn
+                globalFn[key] = keyObj
+                parent.globalFn = globalFn
+            },
+        }
+    })()</script><!-- global head--><script>const GLOBAL_CONFIG = {
+    root: '/',
+    algolia: undefined,
+    localsearch: undefined,
+    runtime: '2024-07-22 00:00:00',
+    lazyload: {
+        enable: false,
+        error: '/img/error_load.avif'
+    },
+    copyright: {"limit":50,"author":"作者: HDi","link":"链接: ","source":"来源: HDi - 随便记","info":"著作权归作者所有。 商业转载请联系作者获得授权，非商业转载请注明出处。"},
+    highlight: {"limit":600,"expand":true,"copy":true,"syntax":"highlight.js"},
+    randomlink: false,
+    lang: {"theme":{"dark":"已切换至深色模式","light":"已切换至浅色模式"},"copy":{"success":"复制成功","error":"复制失败"},"backtop":"返回顶部","time":{"day":"天前","hour":"小时前","just":"刚刚","min":"分钟前","month":"个月前"},"day":" 天","f12":"开发者模式已打开，请遵循GPL协议。","totalk":"无需删除空行，直接输入评论即可"},
+    aside: {
+        sayhello: {
+            morning: "✨ 一日之计在于晨",
+            noon: "午休的时间到了",
+            afternoon: "集中精力，攻克难关 🍵",
+            night: "不要太劳累了，早睡更健康",
+            goodnight: "晚安 😴",
+        },
+        sayhello2: ["💻 前端搬砖工","📷 摄影爱好者","💪 佛系健身人","🎨 绘画小能手","🏂 雪道破坏者","🎸 吉他一直落灰","🕙 倾向周密计划","✨ 独处获得能量"],
+        sayhello3: {
+            prefix: '好久不见，',
+            back: '欢迎再次回来，',
+        },
+    },
+    covercolor: {
+        enable: true
+    },
+    comment: false,
+    lightbox: 'fancybox',
+    post_ai: false,
+    right_menu: {"mode":{"dark":"深色模式","light":"浅色模式"},"img_error":"此图片无法复制与下载","music":{"start":"播放音乐","stop":"暂停音乐"}},
+    lure: false,
+    expire: false,
+};</script><!-- page-config head--><script id="config-diff">var PAGE_CONFIG = {
+    is_post: true,
+    is_page: false,
+    is_home: false,
+    page: '',
+    toc: true,
+    comment: false,
+    ai_text: false
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body id="body"><!-- universe--><canvas id="universe"></canvas><!-- background img--><!-- loading--><!-- console--><div id="console"><div class="close-btn" onclick="sco.hideConsole()"><i class="solitude fa-solid fa-xmark"></i></div><div class="console-card-group"><div class="console-card-group-right"><div class="console-card tags" onclick="sco.hideConsole()"><div class="card-content"><div class="author-content-item-tips">标签</div><div class="author-content-item-title">寻找感兴趣的领域</div></div><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div><div class="console-card history" onclick="sco.hideConsole()"><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2026/03/"><span class="card-archive-list-date">2026/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/08/"><span class="card-archive-list-date">2025/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/06/"><span class="card-archive-list-date">2025/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/02/"><span class="card-archive-list-date">2025/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/12/"><span class="card-archive-list-date">2024/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/08/"><span class="card-archive-list-date">2024/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/07/"><span class="card-archive-list-date">2024/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/06/"><span class="card-archive-list-date">2024/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/05/"><span class="card-archive-list-date">2024/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">5</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">2023/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">2023/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/02/"><span class="card-archive-list-date">2023/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/10/"><span class="card-archive-list-date">2022/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/05/"><span class="card-archive-list-date">2022/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/04/"><span class="card-archive-list-date">2022/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/02/"><span class="card-archive-list-date">2022/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/01/"><span class="card-archive-list-date">2022/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/12/"><span class="card-archive-list-date">2021/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/10/"><span class="card-archive-list-date">2021/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/09/"><span class="card-archive-list-date">2021/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/07/"><span class="card-archive-list-date">2021/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/06/"><span class="card-archive-list-date">2021/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/12/"><span class="card-archive-list-date">2020/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">12</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/11/"><span class="card-archive-list-date">2020/11</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/05/"><span class="card-archive-list-date">2020/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/08/"><span class="card-archive-list-date">2019/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/07/"><span class="card-archive-list-date">2019/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/03/"><span class="card-archive-list-date">2019/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/02/"><span class="card-archive-list-date">2019/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/01/"><span class="card-archive-list-date">2019/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/12/"><span class="card-archive-list-date">2018/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/09/"><span class="card-archive-list-date">2018/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">4</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/04/"><span class="card-archive-list-date">2018/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/03/"><span class="card-archive-list-date">2018/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/01/"><span class="card-archive-list-date">2018/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/10/"><span class="card-archive-list-date">2017/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/09/"><span class="card-archive-list-date">2017/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li></ul></div></div></div><div class="button-group"><div class="console-btn-item"><span class="darkmode_switchbutton" onclick="sco.switchDarkMode()" title="昼夜切换"><i class="solitude fa-solid fa-circle-half-stroke"></i></span></div><div class="console-btn-item" id="consoleHideAside"><span class="asideSwitch" onclick="sco.switchHideAside()" title="边栏显示控制"><i class="solitude fa-solid fa-mattress-pillow"></i></span></div><div class="console-btn-item" id="consoleMusic" onclick="sco.musicToggle()"><span class="music-switch" title="音乐开关"><i class="solitude fa-solid fa-compact-disc"></i></span></div></div><div class="console-mask" onclick="sco.hideConsole()"></div></div><!-- sidebar--><div id="sidebar" style="zoom: 1;"><div id="menu-mask" style="display: none;"></div><div id="sidebar-menus"><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">84</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">11</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">52</div></a></div></div></div><span class="sidebar-menu-item-title">功能</span><div class="sidebar-menu-item"><span class="darkmode_switchbutton menu-child" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span>显示模式</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div><span class="sidebar-menu-item-title">标签</span><div class="card-widget card-tags card-archives card-webinfo card-allinfo"><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div></div></div><!-- keyboard--><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav class="show" id="nav"><div id="nav-group"><div id="blog_name"><a id="site-name" href="/" title="返回博客主页"><span class="title">HDi</span><i class="solitude fa-solid fa-home"></i></a></div><div id="page-name-mask"><div id="page-name"><a id="page-name-text" onclick="sco.toTop()">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</a></div></div><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div></div><div id="nav-left"></div><div id="nav-right"><div class="nav-button" id="randomPost_button"><a class="site-page" onclick="toRandomPost()" title="随机一篇文章" href="javascript:void(0);"><i class="solitude fa-solid fa-dice-d6"></i></a></div><div class="nav-button" id="nav-console"><a class="console_switchbutton" onclick="sco.showConsole()" title="中控台" href="javascript:void(0);"><label><i class="left"></i><i class="center"></i><i class="right"></i></label></a></div><div class="nav-button" id="nav-totop" onclick="sco.toTop()"><a class="totopbtn"><i class="solitude fa-solid fa-arrow-up"></i><span id="percent">0</span></a></div><div id="toggle-menu"><a class="site-page"><i class="solitude fa-solid fa-bars"></i></a></div></div></div></nav><div class="coverdiv" id="coverdiv"><img class="nolazyload" id="post-cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-12.webp" alt="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"></div><div id="post-info"><div id="post-firstinfo"><div class="meta-firstline"><a class="post-meta-original" title="该文章为原创文章，注意版权协议">原创</a><span class="post-meta-categories"><a class="post-meta-categories" href="/categories/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a></span><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型</span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw</span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析</span></a></div></div></div></div><h1 class="post-title">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</h1><div id="post-meta"><div class="meta-secondline"><span class="post-meta-date" title="发布于 2026-03-12 21:11:00"><i class="post-meta-icon solitude fa-solid fa-calendar-days"></i><time datetime="2026-03-12T13:11:00.000Z">2026-03-12T13:11:00.000Z</time></span><a class="post-meta-pv" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="文章热度"><i class="post-meta-icon solitude fa-solid fa-fire-flame-curved"></i><span id="busuanzi_value_page_pv"><i class="solitude fa-solid fa-spinner"></i></span></a></div></div></div><section class="main-hero-waves-area waves-area"><svg class="waves-svg" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M -160 44 c 30 0 58 -18 88 -18 s 58 18 88 18 s 58 -18 88 -18 s 58 18 88 18 v 44 h -352 Z"></path></defs><g class="parallax"><use href="#gentle-wave" x="48" y="0"></use><use href="#gentle-wave" x="48" y="3"></use><use href="#gentle-wave" x="48" y="5"></use><use href="#gentle-wave" x="48" y="7"></use></g></svg></section></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="OpenClaw-设计解析（五）：Agent-运行时——LLM-编排与工具执行"><a href="#OpenClaw-设计解析（五）：Agent-运行时——LLM-编排与工具执行" class="headerlink" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"></a>OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</h1><blockquote>
+<p>OpenClaw Agent 运行时：Pi 框架集成、工具组装、策略管线、事件流、Subagent 和 Agent 持续运行。</p>
+</blockquote>
+<p>本篇介绍 OpenClaw 的 <strong>Agent 运行时</strong>：Pi 框架集成、Agent 启动流程、工具组装管线、7 层工具策略管线、事件流订阅、Subagent 系统、Skills 系统，以及 <strong>Agent 如何实现 7×24 自主持续运行</strong>。</p>
+<hr>
+<h2 id="1-Pi-框架集成"><a href="#1-Pi-框架集成" class="headerlink" title="1. Pi 框架集成"></a>1. Pi 框架集成</h2><p>OpenClaw 的 Agent 运行时建立在 <strong>Pi</strong> 框架之上，使用三件套：</p>
+<div class="mermaid">graph TD
+  subgraph Pi[&quot;Pi 框架三件套&quot;]
+    A[&quot;pi-agent-core\n会话管理 &#x2F; 消息序列化 &#x2F; 上下文压缩&quot;]
+    B[&quot;pi-coding-agent\n编码工具集: read &#x2F; write &#x2F; edit &#x2F; exec&quot;]
+    C[&quot;pi-ai\n多 Provider 适配\nAnthropic &#x2F; OpenAI &#x2F; Google &#x2F; Copilot\n流式输出 &#x2F; token 计量&quot;]
+    A --&gt; C
+    B --&gt; C
+  end</div>
+
+<ul>
+<li><strong><code>pi-agent-core</code></strong> — Agent 核心：会话管理、消息序列化、上下文压缩</li>
+<li><strong><code>pi-coding-agent</code></strong> — 编码工具集：read&#x2F;write&#x2F;edit&#x2F;exec 等基础文件系统和进程管理工具</li>
+<li><strong><code>pi-ai</code></strong> — LLM 调用层：多 Provider 适配（Anthropic、OpenAI、Google、Copilot）、流式输出、token 计量</li>
+</ul>
+<h3 id="Pi-提供的三个核心抽象"><a href="#Pi-提供的三个核心抽象" class="headerlink" title="Pi 提供的三个核心抽象"></a>Pi 提供的三个核心抽象</h3><p>Pi 的设计给上层应用暴露了三个注入点，OpenClaw 通过它们深度定制 Agent 行为，而不需要修改 Pi 框架本身。</p>
+<p><strong>① Session（会话）</strong></p>
+<p><code>createAgentSession()</code> 是 Pi 最核心的 API。它接收模型配置、工具列表和会话管理器，返回一个会话对象：</p>
+<table>
+<thead>
+<tr>
+<th>方法 &#x2F; 属性</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>session.prompt(text)</code></td>
+<td>发送用户消息并<strong>触发 LLM 执行循环</strong> — 唯一的”启动”入口</td>
+</tr>
+<tr>
+<td><code>session.subscribe(handler)</code></td>
+<td>订阅事件流 — 注册回调，接收所有运行时事件</td>
+</tr>
+<tr>
+<td><code>session.steer(text)</code></td>
+<td>在执行过程中插入引导消息</td>
+</tr>
+<tr>
+<td><code>session.abort()</code></td>
+<td>中止当前执行</td>
+</tr>
+<tr>
+<td><code>session.messages</code></td>
+<td>当前消息历史</td>
+</tr>
+<tr>
+<td><code>session.agent.streamFn</code></td>
+<td><strong>可替换的 LLM 调用函数</strong>（见下文）</td>
+</tr>
+<tr>
+<td><code>session.agent.replaceMessages()</code></td>
+<td>替换消息历史（用于清理&#x2F;截断）</td>
+</tr>
+</tbody></table>
+<p>调用 <code>session.prompt(&quot;用户消息&quot;)</code> 后，Pi 内部运行一个自动循环：发消息给 LLM → 收到回复 → 如果 LLM 要调用工具则执行 → 把工具结果发回 LLM → 继续循环，直到 LLM 不再调用工具为止。<strong>整个循环由 Pi 驱动，OpenClaw 只需要调用一次 <code>prompt()</code> 就行。</strong></p>
+<p><strong>② StreamFn（可替换的 LLM 调用函数）</strong></p>
+<p><code>streamSimple</code> 是 Pi 默认的 LLM 调用函数——通过 HTTP 调用 LLM API，返回流式响应。Pi 的巧妙之处在于 <strong><code>streamFn</code> 是可替换的</strong>，OpenClaw 利用这个接口做了大量适配：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// Pi 默认：HTTP 调用所有 LLM Provider</span><br><span class="line">session.agent.streamFn = streamSimple</span><br><span class="line"></span><br><span class="line">// OpenClaw 可以替换为其他传输方式</span><br><span class="line">session.agent.streamFn = createOllamaStreamFn(baseUrl)       // Ollama 原生 API</span><br><span class="line">session.agent.streamFn = createOpenAIWebSocketStreamFn(...)   // OpenAI WebSocket</span><br><span class="line"></span><br><span class="line">// 还可以层层包装（装饰器模式），不修改原函数</span><br><span class="line">session.agent.streamFn = wrapNumCtx(session.agent.streamFn, numCtx)     // 注入参数</span><br><span class="line">session.agent.streamFn = cacheTrace.wrapStreamFn(session.agent.streamFn) // 缓存追踪</span><br><span class="line">session.agent.streamFn = logger.wrapStreamFn(session.agent.streamFn)     // 请求日志</span><br></pre></td></tr></table></figure>
+
+<p>这就像一条中间件链——每一层包装都可以在请求发给 LLM 之前做修改（清理 thinking blocks、注入 Ollama 参数、记录请求日志），而不需要改 Pi 框架的代码。</p>
+<p><strong>③ 事件流（Event Stream）</strong></p>
+<p>Pi 不用传统的独立 callback（如 <code>onMessage</code>、<code>onToolCall</code>），而是所有运行时事件走一条统一的事件流，由订阅者按类型处理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">session.subscribe((event) =&gt; &#123;</span><br><span class="line">  switch (event.type) &#123;</span><br><span class="line">    case &quot;message_start&quot;:         // LLM 开始生成回复</span><br><span class="line">    case &quot;message_update&quot;:        // 流式文本片段（逐 token）</span><br><span class="line">    case &quot;message_end&quot;:           // 一条完整回复结束</span><br><span class="line">    case &quot;tool_execution_start&quot;:  // LLM 决定调用工具</span><br><span class="line">    case &quot;tool_execution_end&quot;:    // 工具执行完毕，结果已返回给 LLM</span><br><span class="line">    case &quot;auto_compaction_start&quot;: // 上下文太长，开始自动压缩</span><br><span class="line">    case &quot;auto_compaction_end&quot;:</span><br><span class="line">    case &quot;agent_start&quot; / &quot;agent_end&quot;:</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>OpenClaw 订阅这个事件流后，将每种事件分发到独立的处理模块——消息处理（流式分块、typing indicator）、工具处理（媒体 URL 过滤、变更追踪）、压缩处理（重试协调）、生命周期处理。</p>
+<h3 id="OpenClaw-与-Pi-的分工"><a href="#OpenClaw-与-Pi-的分工" class="headerlink" title="OpenClaw 与 Pi 的分工"></a>OpenClaw 与 Pi 的分工</h3><div class="mermaid">graph LR
+  subgraph Pi[&quot;Pi 负责（引擎）&quot;]
+    direction TB
+    P1[&quot;LLM 对话循环\nprompt → 回复 → 工具调用 → 循环&quot;]
+    P2[&quot;工具分发\nLLM 说调 read → 找到工具并执行&quot;]
+    P3[&quot;消息持久化\nSessionManager 读写磁盘&quot;]
+    P4[&quot;上下文压缩\n消息历史太长时自动摘要&quot;]
+    P5[&quot;流式输出\n逐 token 推送&quot;]
+  end
+
+  subgraph OC[&quot;OpenClaw 负责（驾驶员）&quot;]
+    direction TB
+    O1[&quot;启动前准备\n模型解析 &#x2F; Auth 轮换 &#x2F; 上下文校验&quot;]
+    O2[&quot;工具注入\n7 个来源共 40+ 工具&quot;]
+    O3[&quot;streamFn 替换\n适配 Ollama &#x2F; OpenAI WS &#x2F; 中间件链&quot;]
+    O4[&quot;事件消费\n分块回复 &#x2F; typing &#x2F; 媒体过滤&quot;]
+    O5[&quot;错误分类与重试\n判断重试、轮换还是放弃&quot;]
+    O6[&quot;消息历史清理\n格式校验 &#x2F; 截断 &#x2F; 修复&quot;]
+  end</div>
+
+<p>简单说：<strong>Pi 是 Agent 的执行引擎</strong>，负责”LLM 要调工具 → 执行工具 → 结果发回 LLM”这个核心循环；<strong>OpenClaw 是驾驶员</strong>，负责告诉引擎用什么模型、带哪些工具、怎么处理错误、怎么把结果传给用户。</p>
+<hr>
+<h2 id="2-Agent-启动流程"><a href="#2-Agent-启动流程" class="headerlink" title="2. Agent 启动流程"></a>2. Agent 启动流程</h2><p>Agent 的完整启动流程可以分为以下几个阶段：</p>
+<h3 id="2-1-队列入队与工作区解析"><a href="#2-1-队列入队与工作区解析" class="headerlink" title="2.1 队列入队与工作区解析"></a>2.1 队列入队与工作区解析</h3><p>首先解析 <strong>Session Lane</strong>（会话级队列）和 <strong>Global Lane</strong>（全局队列），将任务入队——确保同一会话的请求串行执行，避免并发冲突。</p>
+<p>随后解析工作区目录。如果调用方未指定工作区路径，会按 sessionKey → agentId → 默认路径的顺序逐级回退。</p>
+<h3 id="2-2-Hook-预检与模型解析"><a href="#2-2-Hook-预检与模型解析" class="headerlink" title="2.2 Hook 预检与模型解析"></a>2.2 Hook 预检与模型解析</h3><p>在真正调用 LLM 之前，运行两个插件钩子：</p>
+<ol>
+<li><strong><code>before_model_resolve</code></strong> — 插件可以覆盖 provider&#x2F;model 选择</li>
+<li><strong><code>before_agent_start</code></strong> — 遗留兼容钩子，新钩子优先级更高</li>
+</ol>
+<p>模型解析支持 fallback 链：当主模型不可用时，自动切换到配置中的备选模型。</p>
+<h3 id="2-3-凭证保活：Auth-Profile-轮换-Token-自动刷新"><a href="#2-3-凭证保活：Auth-Profile-轮换-Token-自动刷新" class="headerlink" title="2.3 凭证保活：Auth Profile 轮换 + Token 自动刷新"></a>2.3 凭证保活：Auth Profile 轮换 + Token 自动刷新</h3><p>Agent 可能长时间运行，期间 LLM 凭证可能失效。OpenClaw 用两个互补机制保证 Agent 不会因凭证问题中断：</p>
+<p><strong>Auth Profile 轮换</strong>——OpenClaw 支持同时配置多个 LLM Provider 的凭证（例如多个 API Key、多个账号）。当前凭证调用失败时（额度用完、被限流、Key 过期），自动切换到下一个：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">用户发消息 → 用 Profile A (Anthropic) 调用 LLM</span><br><span class="line">  → 失败（额度用完）</span><br><span class="line">  → 标记 A 进入冷却期，切换到 Profile B (OpenAI)</span><br><span class="line">  → 成功 → 回复用户</span><br></pre></td></tr></table></figure>
+
+<p>每个 Profile 有独立的冷却时间，防止短时间内反复尝试已失败的凭证。重试总上限 160 次。</p>
+<p><strong>Copilot Token 自动刷新</strong>——普通 API Key 长期有效不会过期，但 GitHub Copilot 使用 OAuth Token，有效期只有几小时。如果 Agent 跑了 2 小时中途 Token 过期，LLM 调用就会失败。OpenClaw 的做法是在 <strong>Token 过期前 5 分钟</strong> 主动刷新，Agent 全程无感知。</p>
+<p>两者可以叠加：Token 刷新失败时，Profile 轮换兜底，把 Copilot 标记为冷却并切换到其他 Provider。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Auth Profile 轮换</th>
+<th>Copilot Token 刷新</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>解决什么</td>
+<td>当前凭证不可用</td>
+<td>凭证即将过期</td>
+</tr>
+<tr>
+<td>触发时机</td>
+<td>调用失败后（被动）</td>
+<td>过期前 5 分钟（主动）</td>
+</tr>
+<tr>
+<td>策略</td>
+<td>切换到另一个 Provider&#x2F;Key</td>
+<td>续期同一个 Token</td>
+</tr>
+<tr>
+<td>适用范围</td>
+<td>所有 Provider</td>
+<td>仅 OAuth 类（如 Copilot）</td>
+</tr>
+</tbody></table>
+<h3 id="2-4-上下文窗口守护"><a href="#2-4-上下文窗口守护" class="headerlink" title="2.4 上下文窗口守护"></a>2.4 上下文窗口守护</h3><p>在运行前检查模型的上下文窗口大小：</p>
+<ul>
+<li><strong>低于警告阈值</strong> → 记录警告但继续运行</li>
+<li><strong>低于硬性下限</strong> → 直接阻断运行，返回错误</li>
+</ul>
+<p>这可以防止用户配置了上下文极小的模型导致 Agent 反复报错。</p>
+<h3 id="2-5-执行循环"><a href="#2-5-执行循环" class="headerlink" title="2.5 执行循环"></a>2.5 执行循环</h3><p>核心执行通过”尝试-分类-重试”的循环完成。每次尝试后根据错误类型分类处理：</p>
+<div class="mermaid">flowchart TD
+  A[&quot;执行一次 Agent 调用&quot;] --&gt; B{&quot;成功?&quot;}
+  B --&gt;|是| C[&quot;构建结构化回复\n处理 MEDIA &#x2F; AUDIO 等指令&quot;]
+  B --&gt;|否| D{&quot;错误类型?&quot;}
+  D --&gt;|计费错误| E[&quot;停止运行\n（不可恢复）&quot;]
+  D --&gt;|上下文溢出| F[&quot;触发自动压缩\n分配诊断 ID → 重试&quot;]
+  D --&gt;|认证错误| G[&quot;轮换到下一个\nAuth Profile → 重试&quot;]
+  D --&gt;|速率限制| H[&quot;指数退避等待 → 重试&quot;]
+  D --&gt;|瞬时超时| I[&quot;直接重试&quot;]</div>
+
+<hr>
+<h2 id="3-工具组装管线"><a href="#3-工具组装管线" class="headerlink" title="3. 工具组装管线"></a>3. 工具组装管线</h2><p>Agent 的能力由它可用的工具决定。工具来自 <strong>7 个来源</strong>，按顺序组装：</p>
+<div class="mermaid">flowchart TD
+  subgraph 来源[&quot;7 个工具来源&quot;]
+    T1[&quot;① Core Tools\nread &#x2F; write &#x2F; edit\nPi 框架基础工具&quot;]
+    T2[&quot;② Sandbox Tools\n容器化变体\nhost ↔ sandbox 路径桥接&quot;]
+    T3[&quot;③ apply_patch\n特定 Provider 启用（如 OpenAI）&quot;]
+    T4[&quot;④ exec + 进程管理\n命令执行 &#x2F; PTY &#x2F; 白名单&quot;]
+    T5[&quot;⑤ Channel Tools\n通道专属工具\n如 Slack 转发、Discord 频道操作&quot;]
+    T6[&quot;⑥ OpenClaw Tools\nmessage &#x2F; sessions &#x2F; gateway\ncameras &#x2F; subagents &#x2F; media&quot;]
+    T7[&quot;⑦ Plugin Tools\n插件动态注册的工具&quot;]
+  end
+
+  来源 --&gt; A[&quot;Provider 适配\nGemini 剥离约束字段\nAnthropic 保留完整 schema&quot;]
+  A --&gt; B[&quot;7 层策略管线过滤\n（详见下节）&quot;]
+  B --&gt; C[&quot;最终可用工具集&quot;]</div>
+
+<h3 id="来源-1：Core-Tools（pi-coding-agent）"><a href="#来源-1：Core-Tools（pi-coding-agent）" class="headerlink" title="来源 1：Core Tools（pi-coding-agent）"></a>来源 1：Core Tools（pi-coding-agent）</h3><p>基础编码工具：<code>read</code>、<code>write</code>、<code>edit</code>——来自 Pi 框架的 <code>pi-coding-agent</code> 包。这些是文件系统操作的核心，支持工作区安全限制。</p>
+<h3 id="来源-2：Sandbox-Tools（容器化变体）"><a href="#来源-2：Sandbox-Tools（容器化变体）" class="headerlink" title="来源 2：Sandbox Tools（容器化变体）"></a>来源 2：Sandbox Tools（容器化变体）</h3><p>当 Agent 运行在沙箱环境中时，文件系统和进程工具会切换到容器化变体，通过独立的 host&#x2F;sandbox 路径桥接实现文件访问。</p>
+<h3 id="来源-3：apply-patch（可选）"><a href="#来源-3：apply-patch（可选）" class="headerlink" title="来源 3：apply_patch（可选）"></a>来源 3：apply_patch（可选）</h3><p><code>apply_patch</code> 工具仅在特定 Provider 下启用（如 OpenAI），用于批量应用代码补丁。Anthropic OAuth 场景还会对工具名称做重映射。</p>
+<h3 id="来源-4：exec-进程管理"><a href="#来源-4：exec-进程管理" class="headerlink" title="来源 4：exec + 进程管理"></a>来源 4：exec + 进程管理</h3><p><code>exec</code> 和 <code>process</code> 工具提供命令执行和进程管理能力。安全配置控制了命令白名单、超时和 PTY 分配。</p>
+<h3 id="来源-5：Channel-Agent-Tools"><a href="#来源-5：Channel-Agent-Tools" class="headerlink" title="来源 5：Channel Agent Tools"></a>来源 5：Channel Agent Tools</h3><p>通道专属工具——例如 Slack 的消息转发、Discord 的频道操作。这些工具根据当前消息通道动态启用，并通过不兼容规则控制组合（例如语音通道禁用 TTS）。</p>
+<h3 id="来源-6：OpenClaw-Tools"><a href="#来源-6：OpenClaw-Tools" class="headerlink" title="来源 6：OpenClaw Tools"></a>来源 6：OpenClaw Tools</h3><p>OpenClaw 自有工具：<code>message</code>（发送消息）、<code>sessions</code>（会话管理）、<code>gateway</code>（网关控制）、<code>cameras</code>（摄像头）、<code>subagents</code>（子代理生成）、<code>media</code>（媒体处理）等。</p>
+<h3 id="来源-7：Plugin-Tools（动态加载）"><a href="#来源-7：Plugin-Tools（动态加载）" class="headerlink" title="来源 7：Plugin Tools（动态加载）"></a>来源 7：Plugin Tools（动态加载）</h3><p>通过插件系统动态注册的工具。每个插件可以声明自己的工具集，运行时通过插件加载器发现并合并。</p>
+<h3 id="Provider-适配"><a href="#Provider-适配" class="headerlink" title="Provider 适配"></a>Provider 适配</h3><p>组装完成后，还需要针对不同 Provider 做 schema 规范化——Gemini 会剥离约束字段，Anthropic 保留完整 schema。工具还会被包装上 abort signal 和 before-call 钩子（循环检测、认证追踪）。</p>
+<p>最后，所有工具统一通过 <strong>策略管线</strong> 过滤，这是下一节的重点。</p>
+<hr>
+<h2 id="4-7-层工具策略管线"><a href="#4-7-层工具策略管线" class="headerlink" title="4. 7 层工具策略管线"></a>4. 7 层工具策略管线</h2><p>同一个 Gateway 可能同时服务多个场景——你自己在终端写代码需要全部工具，接入 Discord 群不能让群友执行 <code>rm -rf /</code>，给朋友配的只读 Agent 只能搜索和阅读。策略管线就是控制<strong>不同场景下 Agent 能用哪些工具</strong>的。</p>
+<h3 id="核心规则：只能收窄，不能扩大"><a href="#核心规则：只能收窄，不能扩大" class="headerlink" title="核心规则：只能收窄，不能扩大"></a>核心规则：只能收窄，不能扩大</h3><p>7 层是级联过滤的，每一层只能从上层传下来的工具集里继续删，不能往里加：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">全部 40+ 工具</span><br><span class="line">  → 第 1-2 层（profile）过滤后剩 30 个</span><br><span class="line">    → 第 3-4 层（全局策略）过滤后剩 25 个</span><br><span class="line">      → 第 5-6 层（Agent 策略）过滤后剩 10 个</span><br><span class="line">        → 第 7 层（群组策略）过滤后剩 5 个  ← Agent 最终只能用这 5 个</span><br></pre></td></tr></table></figure>
+
+<p>管理员在上层设的安全底线，下层的任何配置都无法突破。</p>
+<h3 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h3><p><strong>全局禁用危险工具（第 3 层）</strong>——配置 <code>tools.allow: [&quot;*&quot;, &quot;!exec&quot;, &quot;!process&quot;]</code>，所有 Agent、所有通道都不能执行命令。</p>
+<p><strong>只读 Agent（第 5 层）</strong>——配置 <code>agents.research.tools.allow: [&quot;read&quot;, &quot;web_search&quot;, &quot;web_fetch&quot;]</code>，这个 Agent 只能读文件和搜索，连 <code>write</code> 都没有。</p>
+<p><strong>Discord 群再收窄（第 7 层）</strong>——群组配置 <code>tools.allow: [&quot;read&quot;, &quot;web_search&quot;]</code>，即使 Agent 自身允许 <code>web_fetch</code>，在这个群里也不能用。</p>
+<h3 id="管线结构"><a href="#管线结构" class="headerlink" title="管线结构"></a>管线结构</h3><div class="mermaid">flowchart TD
+  A[&quot;工具全集&quot;] --&gt; L1
+  L1[&quot;层1: 用户工具配置文件\ncoding &#x2F; analysis &#x2F; messaging &#x2F; full&quot;] --&gt; L2
+  L2[&quot;层2: Provider 专属 profile\n如 anthropic-restricted&quot;] --&gt; L3
+  L3[&quot;层3: 全局允许&#x2F;拒绝列表&quot;] --&gt; L4
+  L4[&quot;层4: 全局 Provider 允许列表&quot;] --&gt; L5
+  L5[&quot;层5: Agent 专属工具策略&quot;] --&gt; L6
+  L6[&quot;层6: Agent + Provider 组合策略&quot;] --&gt; L7
+  L7[&quot;层7: 群组&#x2F;通道级别策略&quot;] --&gt; B[&quot;过滤后的工具集&quot;]
+
+  style A fill:#e8f5e9
+  style B fill:#fff3e0</div>
+
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>配置路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>tools.profile</code></td>
+<td>用户工具配置文件（coding &#x2F; analysis &#x2F; messaging &#x2F; full）</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>tools.byProvider.profile</code></td>
+<td>Provider 专属 profile（如 anthropic-restricted）</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>tools.allow</code></td>
+<td>全局允许&#x2F;拒绝列表</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>tools.byProvider.allow</code></td>
+<td>全局 Provider 专属允许列表</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>agents.&#123;id&#125;.tools.allow</code></td>
+<td>Agent 专属工具策略</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>agents.&#123;id&#125;.tools.byProvider.allow</code></td>
+<td>Agent + Provider 组合策略</td>
+</tr>
+<tr>
+<td>7</td>
+<td>group <code>tools.allow</code></td>
+<td>群组&#x2F;通道级别策略</td>
+</tr>
+</tbody></table>
+<h3 id="管线执行"><a href="#管线执行" class="headerlink" title="管线执行"></a>管线执行</h3><p>执行过程分为三步：</p>
+<ol>
+<li><strong>区分 core vs. plugin</strong> — 判断每个工具是核心工具还是插件工具</li>
+<li><strong>构建插件工具组</strong> — 将同一插件的所有工具分组，支持通配符匹配（例如 <code>plugin:mcp-*</code> 匹配所有 MCP 插件工具）</li>
+<li><strong>逐层过滤</strong> — 遍历 7 层，依次收窄工具集</li>
+</ol>
+<p>如果某一层的允许列表包含未知条目（既不是核心工具也不匹配任何已加载插件），会输出诊断信息。</p>
+<hr>
+<h2 id="5-事件流订阅"><a href="#5-事件流订阅" class="headerlink" title="5. 事件流订阅"></a>5. 事件流订阅</h2><p>Pi 使用 <strong>事件流模型</strong> 而非传统 callback。OpenClaw 订阅事件流并按类型分发处理：</p>
+<div class="mermaid">flowchart LR
+  subgraph 事件流[&quot;Pi 事件流&quot;]
+    E1[&quot;message_start&quot;]
+    E2[&quot;message_end&quot;]
+    E3[&quot;tool_execution_start&quot;]
+    E4[&quot;tool_execution_end&quot;]
+    E5[&quot;agent_start &#x2F; end&quot;]
+    E6[&quot;auto_compaction&quot;]
+  end
+
+  E3 --&gt; H1[&quot;刷新回复缓冲区\n发送 typing indicator\n记录工具调用元数据&quot;]
+  E4 --&gt; H2[&quot;检测错误状态\n提交&#x2F;丢弃消息文本\n运行 after_tool_call 钩子\n媒体 URL 安全过滤&quot;]</div>
+
+<h3 id="关键事件处理"><a href="#关键事件处理" class="headerlink" title="关键事件处理"></a>关键事件处理</h3><p>**<code>tool_execution_start</code>**：</p>
+<p>这是一个 <strong>异步、尽力而为</strong> 的处理器——不阻塞主执行流。它完成三件事：</p>
+<ol>
+<li>刷新回复缓冲区，确保消息边界正确</li>
+<li>触发 <strong>typing indicator</strong> — 发送 fire-and-forget 的输入指示信号（告知用户”AI 正在操作”）</li>
+<li>记录工具调用元数据</li>
+</ol>
+<p>**<code>tool_execution_end</code>**：</p>
+<p>处理更加复杂：</p>
+<ol>
+<li>检测工具执行是否出错</li>
+<li>提交或丢弃消息工具的文本（仅非错误时保留）</li>
+<li>更新变更操作追踪（写操作的错误必须上报）</li>
+<li>运行 <code>after_tool_call</code> 插件钩子</li>
+<li><strong>媒体 URL 安全过滤</strong> — 区分受信任工具（如 <code>read</code>、<code>edit</code>、<code>exec</code>、<code>browser</code> 等，直接透传 URL）和非受信任工具（仅允许 HTTP&#x2F;HTTPS URL），防止恶意路径注入</li>
+</ol>
+<h3 id="错误抑制策略"><a href="#错误抑制策略" class="headerlink" title="错误抑制策略"></a>错误抑制策略</h3><p>并非所有错误都需要暴露给用户，系统实现了智能错误抑制：</p>
+<table>
+<thead>
+<tr>
+<th>错误类型</th>
+<th>处理方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>可恢复错误（字段缺失&#x2F;格式无效）</td>
+<td>如果用户已有回复则静默</td>
+</tr>
+<tr>
+<td>变更操作错误（写&#x2F;删除失败）</td>
+<td><strong>始终上报</strong>（不能静默确认失败的写操作）</td>
+</tr>
+<tr>
+<td>exec&#x2F;bash 错误</td>
+<td>除非 verbose 模式，否则抑制</td>
+</tr>
+<tr>
+<td>跨会话发送超时</td>
+<td>静默处理（瞬时问题）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-Subagent-系统"><a href="#6-Subagent-系统" class="headerlink" title="6. Subagent 系统"></a>6. Subagent 系统</h2><p>OpenClaw 支持 <strong>子代理</strong>——父 Agent 通过工具调用生成独立的子 Agent。</p>
+<div class="mermaid">sequenceDiagram
+  participant P as 父 Agent
+  participant S as 子 Agent
+
+  P-&gt;&gt;S: sessions_spawn(task, sandbox)
+  Note over P: 父 Agent 继续其他工作
+  Note over S: 独立执行（独立 Lane，不占用父队列）
+  S-&gt;&gt;P: announce（宣告结果）
+  Note over P: 收到结果，继续后续处理
+
+  rect rgb(255, 245, 230)
+    Note over P,S: 失败处理
+    Note over S: 宣告失败 → 指数退避重试 1s→2s→4s→8s，最多 3 次
+    Note over S: 5 分钟强制过期 &#x2F; 30 分钟硬过期（兜底）
+  end
+
+  rect rgb(255, 235, 235)
+    Note over P,S: 孤儿检测
+    Note over S: 父会话已销毁？→ 标记 error + 清理资源
+  end</div>
+
+<h3 id="子代理运行记录"><a href="#子代理运行记录" class="headerlink" title="子代理运行记录"></a>子代理运行记录</h3><p>每个子代理运行都被完整追踪，记录关键状态：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">SubagentRunRecord:</span><br><span class="line">  runId            — 运行唯一 ID</span><br><span class="line">  childSessionKey  — 子代理会话 key</span><br><span class="line">  requesterSessionKey — 父会话 key</span><br><span class="line">  task             — 任务描述</span><br><span class="line">  cleanup          — 完成后 &quot;delete&quot; 还是 &quot;keep&quot; 会话</span><br><span class="line">  spawnMode        — 生成模式</span><br><span class="line">  createdAt / startedAt / endedAt — 时间戳</span><br><span class="line">  outcome          — 结果 &#123; status, error?, text? &#125;</span><br><span class="line">  announceRetryCount — 宣告重试次数</span><br></pre></td></tr></table></figure>
+
+<h3 id="生命周期常量"><a href="#生命周期常量" class="headerlink" title="生命周期常量"></a>生命周期常量</h3><table>
+<thead>
+<tr>
+<th>常量</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>宣告窗口</td>
+<td>2 分钟</td>
+<td>子代理完成后等待宣告的时间窗口</td>
+</tr>
+<tr>
+<td>强制过期</td>
+<td>5 分钟</td>
+<td>超时未宣告成功则过期</td>
+</tr>
+<tr>
+<td>最大重试</td>
+<td>3 次</td>
+<td>宣告最大重试次数</td>
+</tr>
+<tr>
+<td>重试延迟上限</td>
+<td>8 秒</td>
+<td>指数退避的上限</td>
+</tr>
+<tr>
+<td>硬过期</td>
+<td>30 分钟</td>
+<td>防止任何原因导致的子代理永远挂起</td>
+</tr>
+</tbody></table>
+<h3 id="孤儿检测"><a href="#孤儿检测" class="headerlink" title="孤儿检测"></a>孤儿检测</h3><p>系统会检查子代理是否已成为孤儿——例如父会话已销毁、session ID 不再存在。发现孤儿后，将其标记为 <code>status: &quot;error&quot;</code> 并执行清理。30 分钟硬过期兜底，确保没有子代理永远挂起。</p>
+<hr>
+<h2 id="7-Skills-系统"><a href="#7-Skills-系统" class="headerlink" title="7. Skills 系统"></a>7. Skills 系统</h2><p>Skills 是 Agent 运行时的 “知识扩展包”——不是工具（执行能力），而是提示词注入（知识能力）。</p>
+<h3 id="技能来源优先级"><a href="#技能来源优先级" class="headerlink" title="技能来源优先级"></a>技能来源优先级</h3><p>技能按来源分层，优先级从低到高（高优先级覆盖低优先级的同名技能）：</p>
+<div class="mermaid">flowchart LR
+  A[&quot;① openclaw-extra\n显式配置的额外目录&quot;] --&gt; B[&quot;② openclaw-bundled\n内置技能&quot;]
+  B --&gt; C[&quot;③ openclaw-managed\n包管理器安装的技能&quot;]
+  C --&gt; D[&quot;④ ~&#x2F;.agents&#x2F;skills\n个人全局技能&quot;]
+  D --&gt; E[&quot;⑤ .agents&#x2F;skills\n项目级技能&quot;]
+  E --&gt; F[&quot;⑥ 工作区 skills&#x2F;\n最高优先级&quot;]
+
+  style A fill:#f5f5f5
+  style F fill:#e8f5e9</div>
+
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>来源</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1（最低）</td>
+<td><code>openclaw-extra</code></td>
+<td>显式配置的额外目录</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>openclaw-bundled</code></td>
+<td>内置 OpenClaw 技能</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>openclaw-managed</code></td>
+<td>包管理器安装的技能</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>agents-skills-personal</code></td>
+<td><code>~/.agents/skills</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>agents-skills-project</code></td>
+<td><code>.agents/skills</code>（工作区内）</td>
+</tr>
+<tr>
+<td>6（最高）</td>
+<td><code>openclaw-workspace</code></td>
+<td>工作区 <code>skills/</code> 目录</td>
+</tr>
+</tbody></table>
+<h3 id="预算控制"><a href="#预算控制" class="headerlink" title="预算控制"></a>预算控制</h3><p>技能注入到系统提示词中，但有严格的预算控制：</p>
+<table>
+<thead>
+<tr>
+<th>限制</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最大技能数</td>
+<td>150 个</td>
+<td>超出则截断</td>
+</tr>
+<tr>
+<td>最大字符数</td>
+<td>30,000 字符</td>
+<td>所有技能的总字符数</td>
+</tr>
+<tr>
+<td>单文件上限</td>
+<td>256 KB</td>
+<td>单个技能文件大小</td>
+</tr>
+</tbody></table>
+<p>当技能总量超过字符预算时，使用 <strong>二分查找截断</strong> 算法找到能容纳的最大技能前缀。路径中的 <code>$HOME</code> 会被替换为 <code>~</code>，节省约 400-600 个 token。</p>
+<h3 id="工作区同步"><a href="#工作区同步" class="headerlink" title="工作区同步"></a>工作区同步</h3><p>技能文件会被同步到沙箱工作区。同步操作按工作区序列化执行，避免并发写入冲突，并对路径做安全清理。</p>
+<hr>
+<h2 id="8-执行流程全景"><a href="#8-执行流程全景" class="headerlink" title="8. 执行流程全景"></a>8. 执行流程全景</h2><p>把上面的所有环节串起来，一个用户消息从接收到回复的完整路径如下：</p>
+<div class="mermaid">flowchart LR
+  A[&quot;用户消息&quot;] --&gt; B[&quot;会话定位&quot;] --&gt; C[&quot;模型解析\nfallback 链&quot;] --&gt; D[&quot;工具组装\n7 个来源&quot;] --&gt; E[&quot;策略管线\n7 层过滤&quot;] --&gt; F[&quot;技能提示词\n注入&quot;]</div>
+
+<div class="mermaid">flowchart TD
+  subgraph G[&quot;Agent 执行循环&quot;]
+    G1[&quot;Lane 队列入队\nSession + Global Lane&quot;] --&gt; G2[&quot;Auth Profile 解析\nCopilot Token 刷新&quot;]
+    G2 --&gt; G3[&quot;上下文窗口校验&quot;]
+    G3 --&gt; G4[&quot;调用 Pi 框架执行&quot;]
+  end
+
+  G4 --&gt; H1
+
+  subgraph H[&quot;Pi 事件流处理&quot;]
+    H1[&quot;message_start&#x2F;update&#x2F;end\n→ 文本流式输出&quot;]
+    H2[&quot;tool_execution_start\n→ typing indicator&quot;]
+    H3[&quot;tool_execution_end\n→ 结果捕获 + 媒体过滤&quot;]
+    H4[&quot;auto_compaction\n→ 上下文压缩&quot;]
+  end
+
+  H --&gt; I{&quot;错误?&quot;}
+  I --&gt;|是| J[&quot;错误分类 + 重试\n（failover 状态机）&quot;]
+  J --&gt; G4
+  I --&gt;|否| K[&quot;构建结构化回复&quot;]
+  K --&gt; L[&quot;回复用户\n（通过通道层投递）&quot;]</div>
+
+<hr>
+<h2 id="9-Agent-持续运行：7×24-自主执行"><a href="#9-Agent-持续运行：7×24-自主执行" class="headerlink" title="9. Agent 持续运行：7×24 自主执行"></a>9. Agent 持续运行：7×24 自主执行</h2><p>前面的章节介绍的都是 <strong>被动模式</strong>——用户发消息，Agent 回复。但 OpenClaw 的 Agent 也能 <strong>主动运行</strong>：定时巡检工作区、响应异步事件、按计划执行任务，实现 24 小时不间断的自主服务。</p>
+<h3 id="核心设计：回合制，而非常驻进程"><a href="#核心设计：回合制，而非常驻进程" class="headerlink" title="核心设计：回合制，而非常驻进程"></a>核心设计：回合制，而非常驻进程</h3><p>Agent 的持续运行 <strong>不是</strong> 一个永不退出的长进程。它采用 <strong>回合制（turn-based）</strong> 模型：</p>
+<div class="mermaid">flowchart TD
+  subgraph 被动[&quot;被动回合&quot;]
+    direction LR
+    A1[&quot;用户消息&quot;] --&gt; A2[&quot;Agent 执行\n（调用 LLM + 工具）&quot;] --&gt; A3[&quot;回复用户&quot;]
+  end
+
+  subgraph 主动[&quot;主动回合&quot;]
+    direction LR
+    B1[&quot;定时器 &#x2F; 事件 &#x2F; Cron&quot;] --&gt; B2[&quot;Agent 执行\n（同样的 LLM + 工具）&quot;] --&gt; B3[&quot;投递结果\n或静默完成&quot;]
+  end
+
+  subgraph 持久[&quot;跨回合持久化&quot;]
+    C1[&quot;会话历史（磁盘 JSON）&quot;]
+    C2[&quot;工作区文件（HEARTBEAT.md 等）&quot;]
+  end
+
+  A3 --&gt; C1
+  B3 --&gt; C1
+  C1 -.-&gt;|&quot;下一回合加载&quot;| A2
+  C1 -.-&gt;|&quot;下一回合加载&quot;| B2</div>
+
+<p>每个回合都是一次完整的 Agent 执行（<code>getReplyFromConfig()</code> → Pi 框架的 prompt → LLM → 工具调用循环 → 回复），和用户消息触发的回合走完全相同的代码路径。回合之间通过 <strong>会话持久化</strong>（磁盘上的 JSON 文件）和 <strong>工作区文件</strong> 保持上下文连续性。</p>
+<p>这个设计的好处是：Agent 不需要长期占用内存和 LLM 连接，每个回合结束后资源就释放了，但通过持久化的会话历史，下一回合可以无缝接续上次的上下文。</p>
+<h3 id="9-1-Heartbeat：定时自主巡检"><a href="#9-1-Heartbeat：定时自主巡检" class="headerlink" title="9.1 Heartbeat：定时自主巡检"></a>9.1 Heartbeat：定时自主巡检</h3><p>Heartbeat 是 Agent 持续运行的核心机制。Gateway 启动时，<code>startHeartbeatRunner()</code>（<code>src/infra/heartbeat-runner.ts</code>）注册一个定时调度器，按配置的间隔周期性地触发 Agent 回合。</p>
+<p><strong>工作流程：</strong></p>
+<div class="mermaid">sequenceDiagram
+  participant T as 定时器
+  participant R as HeartbeatRunner
+  participant A as Agent（Pi 框架）
+  participant D as 投递层
+
+  loop 每 30 分钟（可配置）
+    T-&gt;&gt;R: requestHeartbeatNow(reason: &quot;interval&quot;)
+    R-&gt;&gt;R: 检查: 队列空闲? 在活跃时段内?
+    R-&gt;&gt;A: getReplyFromConfig(heartbeatPrompt)
+    Note over A: 读取 HEARTBEAT.md，检查工作区状态，调用工具
+    A--&gt;&gt;R: 回复内容
+
+    alt 回复 &#x3D; &quot;HEARTBEAT_OK&quot;
+      R-&gt;&gt;R: 静默处理，裁剪对话记录
+    else 回复有实质内容（告警&#x2F;报告）
+      R-&gt;&gt;D: deliverOutboundPayloads()
+      D--&gt;&gt;R: 发送到 Telegram &#x2F; Discord &#x2F; ...
+    end
+  end</div>
+
+<p><strong>Heartbeat Prompt</strong> 是 Agent 在每次心跳回合中收到的指令，默认值很简洁：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Read HEARTBEAT.md if it exists (workspace context).</span><br><span class="line">Follow it strictly.</span><br><span class="line">Do not infer or repeat old tasks from prior chats.</span><br><span class="line">If nothing needs attention, reply HEARTBEAT_OK.</span><br></pre></td></tr></table></figure>
+
+<p>用户通过在工作区放置 <code>HEARTBEAT.md</code> 文件来告诉 Agent 每次巡检时该做什么——比如检查服务器状态、检查代码仓库是否有新 issue、执行构建验证等。</p>
+<p><strong>HEARTBEAT_OK 裁剪机制</strong>：如果 Agent 判断无事可做，回复 <code>HEARTBEAT_OK</code>，系统会 <strong>回退对话记录到心跳前的状态</strong>，避免大量”一切正常”的空洞对话膨胀上下文窗口。只有有实质内容的回合才会保留在会话历史中。</p>
+<p>裁剪的实现非常巧妙——<strong>利用文件截断（<code>fs.truncate</code>）做字节级回退</strong>：</p>
+<div class="mermaid">sequenceDiagram
+  participant R as HeartbeatRunner
+  participant F as 对话记录文件（JSONL）
+  participant A as Agent（Pi 框架）
+
+  R-&gt;&gt;F: captureTranscriptState()
+  Note over F: 记录当前文件大小 &#x3D; 48,230 字节
+
+  R-&gt;&gt;A: getReplyFromConfig(heartbeatPrompt)
+  Note over A: Pi 框架执行心跳回合，自动将&lt;br&#x2F;&gt;user + assistant 消息追加写入文件
+  Note over F: 文件增长到 49,850 字节（+1,620）
+
+  A--&gt;&gt;R: 回复 &quot;HEARTBEAT_OK&quot;
+
+  alt HEARTBEAT_OK（无实质内容）
+    R-&gt;&gt;F: fs.truncate(path, 48230)
+    Note over F: 截断回心跳前大小，对话记录被擦除
+    R-&gt;&gt;F: restoreHeartbeatUpdatedAt()
+  else 有实质内容（告警&#x2F;报告）
+    Note over F: 保留完整文件，心跳对话成为历史一部分
+  end</div>
+
+<p>三步操作确保”无事发生”的心跳回合不留痕迹：</p>
+<ol>
+<li><strong>心跳前快照</strong>：<code>captureTranscriptState()</code> 通过 <code>fs.stat()</code> 记录对话记录文件（JSONL 格式）的当前字节大小</li>
+<li><strong>文件截断</strong>：<code>pruneHeartbeatTranscript()</code> 调用 <code>fs.truncate(transcriptPath, preHeartbeatSize)</code>，把文件截断到心跳前的大小——Pi 框架在执行过程中追加写入的 user（心跳提示词）和 assistant（HEARTBEAT_OK 回复）消息被直接从文件末尾抹除</li>
+<li><strong>时间戳恢复</strong>：<code>restoreHeartbeatUpdatedAt()</code> 将会话的 <code>updatedAt</code> 回退到心跳前的值，避免空心跳触发不必要的会话排序变动</li>
+</ol>
+<p>这个设计之所以可行，是因为对话记录使用 <strong>JSONL 格式</strong>（每行一条消息，追加写入）——新消息总是追加在文件末尾，截断末尾就能精确移除最后写入的消息，不会破坏之前的记录。</p>
+<p><strong>重复告警抑制</strong>：如果 Agent 连续两次心跳回复完全相同的文本（24 小时内），第二次会被静默跳过，防止 Agent 对同一问题反复”唠叨”。</p>
+<h3 id="9-2-Heartbeat-配置"><a href="#9-2-Heartbeat-配置" class="headerlink" title="9.2 Heartbeat 配置"></a>9.2 Heartbeat 配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">agents:</span></span><br><span class="line">  <span class="attr">defaults:</span></span><br><span class="line">    <span class="attr">heartbeat:</span></span><br><span class="line">      <span class="attr">every:</span> <span class="string">&quot;30m&quot;</span> <span class="comment"># 间隔（支持 s/m/h 单位，默认 30 分钟）</span></span><br><span class="line">      <span class="attr">prompt:</span> <span class="string">&quot;...&quot;</span> <span class="comment"># 自定义心跳提示词（覆盖默认）</span></span><br><span class="line">      <span class="attr">target:</span> <span class="string">&quot;last&quot;</span> <span class="comment"># 结果投递目标（none / last / 具体通道 ID）</span></span><br><span class="line">      <span class="attr">model:</span> <span class="string">&quot;anthropic/claude&quot;</span> <span class="comment"># 心跳专用模型（可选，默认继承 Agent 模型）</span></span><br><span class="line">      <span class="attr">session:</span> <span class="string">&quot;main&quot;</span> <span class="comment"># 心跳使用的会话（默认主会话）</span></span><br><span class="line">      <span class="attr">activeHours:</span> <span class="comment"># 活跃时段窗口（窗口外不触发心跳）</span></span><br><span class="line">        <span class="attr">start:</span> <span class="string">&quot;09:00&quot;</span></span><br><span class="line">        <span class="attr">end:</span> <span class="string">&quot;22:00&quot;</span></span><br><span class="line">        <span class="attr">timezone:</span> <span class="string">&quot;user&quot;</span></span><br><span class="line">      <span class="attr">ackMaxChars:</span> <span class="number">300</span> <span class="comment"># HEARTBEAT_OK 附带内容的字符上限</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>every</code></td>
+<td><code>&quot;30m&quot;</code></td>
+<td>心跳间隔；<code>&quot;0m&quot;</code> 禁用心跳</td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td><code>&quot;none&quot;</code></td>
+<td><code>&quot;none&quot;</code> &#x3D; 静默执行；<code>&quot;last&quot;</code> &#x3D; 投递到最近交互的通道</td>
+</tr>
+<tr>
+<td><code>activeHours</code></td>
+<td>无</td>
+<td>限制心跳只在特定时段运行（如工作时间），窗口外的心跳被跳过</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>继承</td>
+<td>可为心跳指定更便宜&#x2F;更快的模型，节约成本</td>
+</tr>
+</tbody></table>
+<p><strong>多 Agent 心跳</strong>：如果配置了多个 Agent（<code>agents.list</code>），每个 Agent 可以有独立的心跳配置。只有显式配置了 <code>heartbeat</code> 字段的 Agent 才会参与心跳调度；未配置的 Agent 不会被心跳触发。</p>
+<h3 id="9-3-系统事件：事件驱动的-Agent-唤醒"><a href="#9-3-系统事件：事件驱动的-Agent-唤醒" class="headerlink" title="9.3 系统事件：事件驱动的 Agent 唤醒"></a>9.3 系统事件：事件驱动的 Agent 唤醒</h3><p>除了定时心跳，Agent 还可以被 <strong>异步事件</strong> 唤醒。<code>enqueueSystemEvent()</code>（<code>src/infra/system-events.ts</code>）是事件入口：</p>
+<p>理解系统事件机制，需要先分清三个 <strong>独立</strong> 的系统：</p>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>职责</th>
+<th>数据结构</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Heartbeat 调度器</strong></td>
+<td>按固定间隔（如 30 分钟）触发回合</td>
+<td>定时器（<code>setTimeout</code>）</td>
+</tr>
+<tr>
+<td><strong>Cron 调度器</strong></td>
+<td>按 cron 表达式在精确时间点触发</td>
+<td>独立定时器 + 任务存储</td>
+</tr>
+<tr>
+<td><strong>系统事件队列</strong></td>
+<td>消息缓冲区，暂存待注入的事件文本</td>
+<td>内存 <code>Map&lt;string, Queue&gt;</code></td>
+</tr>
+</tbody></table>
+<p><strong>系统事件队列不是任务调度器</strong>——它只是一个缓冲区。事件不会”提前入队等待执行”，而是在实际发生时才被放入队列。</p>
+<p>事件源分为两类，区别在于 <strong>入队的同时是否唤醒心跳</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>事件来源</th>
+<th align="center">入队（<code>enqueueSystemEvent</code>）</th>
+<th align="center">唤醒（<code>requestHeartbeatNow</code>）</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>exec 命令完成</td>
+<td align="center">是</td>
+<td align="center">是</td>
+<td>入队 + <strong>立即唤醒</strong></td>
+</tr>
+<tr>
+<td>Webhook &#x2F; Hook 触发</td>
+<td align="center">是</td>
+<td align="center">是（wakeMode&#x3D;now 时）</td>
+<td>入队 + <strong>立即唤醒</strong></td>
+</tr>
+<tr>
+<td>设备通知</td>
+<td align="center">是</td>
+<td align="center">是</td>
+<td>入队 + <strong>立即唤醒</strong></td>
+</tr>
+<tr>
+<td>Slack 反应&#x2F;编辑&#x2F;删除&#x2F;Pin</td>
+<td align="center">是</td>
+<td align="center"><strong>否</strong></td>
+<td><strong>仅入队，搭便车</strong></td>
+</tr>
+<tr>
+<td>Telegram 反应</td>
+<td align="center">是</td>
+<td align="center"><strong>否</strong></td>
+<td><strong>仅入队，搭便车</strong></td>
+</tr>
+<tr>
+<td>Gateway 重启通知</td>
+<td align="center">是</td>
+<td align="center"><strong>否</strong></td>
+<td><strong>仅入队，搭便车</strong></td>
+</tr>
+</tbody></table>
+<p>注意表里没有 Cron——Cron 走的是独立路径（详见 9.4 节），不是”先入队再等心跳消费”。</p>
+<div class="mermaid">flowchart TD
+  subgraph 入队且唤醒[&quot;入队 + 立即唤醒&quot;]
+    E1[&quot;exec 命令完成&quot;]
+    E3[&quot;Webhook &#x2F; Hook&quot;]
+    E6[&quot;设备通知&quot;]
+  end
+
+  subgraph 仅入队[&quot;仅入队（搭便车）&quot;]
+    E2[&quot;Slack 反应&#x2F;编辑&#x2F;Pin&quot;]
+    E7[&quot;Telegram 反应&quot;]
+    E5[&quot;Gateway 重启通知&quot;]
+  end
+
+  E1 &amp; E3 &amp; E6 --&gt; Q[&quot;系统事件队列\n（内存缓冲区，每会话最多 20 条）&quot;]
+  E2 &amp; E7 &amp; E5 --&gt; Q
+
+  E1 &amp; E3 &amp; E6 --&gt;|requestHeartbeatNow| W[&quot;立即唤醒心跳&quot;]
+
+  W --&gt; A[&quot;Agent 回合启动&quot;]
+  A --&gt; D[&quot;drainSystemEventEntries()\n取出队列中所有事件&quot;]
+  Q --&gt; D
+  D --&gt; P[&quot;注入到系统提示词&quot;]</div>
+
+<p><strong>“仅入队”事件的搭便车模式</strong>：Slack 反应这类事件自己不会触发回合——它们只是静静地待在队列里。下一次回合（无论是定时心跳、exec 唤醒还是 Cron 触发的）执行 drain 时，会把它们 <strong>顺带捞出来</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">14:00  心跳回合执行完毕，队列清空</span><br><span class="line">14:05  Slack 反应 → 仅入队（不唤醒）               队列: [反应]</span><br><span class="line">14:12  exec 完成 → 入队 + requestHeartbeatNow()    队列: [反应, exec完成]</span><br><span class="line">14:12  心跳被唤醒 → drain 取出 2 条事件一起交给 LLM</span><br></pre></td></tr></table></figure>
+
+<p>如果在 14:30 之前没有任何唤醒事件发生，Slack 反应会等到 14:30 的定时心跳才被消费。这是有意的设计取舍——Slack 反应不够紧急，不值得单独触发一次 LLM 调用（消耗 token 和时间），但搭便车是零成本的。</p>
+<p><strong>Cron 事件不会被提前消费</strong>：Cron 调度器有自己的定时器，事件在定时触发之前根本不存在于队列中：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">14:00  Cron 调度器设定: &quot;14:30 执行任务 A&quot;</span><br><span class="line">14:12  exec 完成 → 唤醒心跳 → drain → 队列里只有 exec 事件（Cron 事件不存在！）</span><br><span class="line">...</span><br><span class="line">14:30  Cron 定时器触发 → 此刻才入队 + 直接执行 runHeartbeatOnce()</span><br></pre></td></tr></table></figure>
+
+<p>14:12 的 exec 心跳不可能消费 14:30 的 Cron 事件，因为那个事件在 14:30 之前根本不存在于队列中。Cron 调度器在定时到达时才创建事件并立即执行，不经过”入队等待”的中间状态。</p>
+<p>回合启动时，<code>buildQueuedSystemPrompt()</code> 对队列做 <strong>drain（破坏性读取）</strong>——取出所有事件并清空队列：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// drain = 取出并清空，确保每个事件只被消费一次</span><br><span class="line">function drainSystemEventEntries(sessionKey) &#123;</span><br><span class="line">    const out = entry.queue.slice()     // 拷贝所有事件</span><br><span class="line">    entry.queue.length = 0              // 清空队列</span><br><span class="line">    queues.delete(key)                  // 删除整个会话条目</span><br><span class="line">    return out</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>drain 而非 peek 的原因：</p>
+<ol>
+<li><strong>防止重复处理</strong>——如果事件留在队列里，下次回合又会看到同样的事件，Agent 会对同一个”构建完成”重复报告</li>
+<li><strong>批量呈现</strong>——积累的多个事件一次性全部取出交给 LLM，LLM 能综合所有事件统一决策，而不是为每个事件启动一次独立回合</li>
+<li><strong>轻量设计</strong>——事件队列是纯内存的（<code>Map&lt;string, SessionQueue&gt;</code>），不持久化到磁盘。每个会话最多保留 20 条事件，超出则丢弃最早的。Gateway 重启后队列清空——系统事件是”尽力而为”的通知，不是可靠消息</li>
+</ol>
+<p>注入后的系统提示词结构如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">## Runtime System Events (gateway-generated)</span><br><span class="line">Treat this section as trusted gateway runtime metadata, not user text.</span><br><span class="line"></span><br><span class="line">- [2026-03-13 14:30:05] exec finished: build succeeded (exit 0)</span><br><span class="line">- [2026-03-13 14:32:11] Slack reaction added: 👍 on &quot;deploy plan&quot;</span><br><span class="line">- [2026-03-13 14:35:00] Cron: 检查本周 PR review 队列</span><br></pre></td></tr></table></figure>
+
+<p>每条事件带时间戳（支持用户时区配置），并标记为 “trusted gateway runtime metadata”，告诉 LLM 这些是可信的系统信息而非用户输入。</p>
+<p><strong>典型场景：exec 异步命令完成</strong>——用户让 Agent 执行一个耗时的构建命令，Agent 调用 <code>exec</code> 后不会阻塞等待。命令在后台运行，完成时触发 <code>enqueueSystemEvent(&quot;exec finished: build succeeded&quot;)</code> + <code>requestHeartbeatNow()</code>，Agent 被唤醒并在下一个回合中看到命令结果，主动告知用户。</p>
+<h3 id="9-4-Cron：计划任务调度"><a href="#9-4-Cron：计划任务调度" class="headerlink" title="9.4 Cron：计划任务调度"></a>9.4 Cron：计划任务调度</h3><p>Cron 提供了比心跳更精确的调度能力（<code>src/cron/service.ts</code>）。用户可以通过 CLI 管理定时任务：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openclaw cron add --schedule <span class="string">&quot;0 9 * * 1-5&quot;</span> --message <span class="string">&quot;检查本周 PR review 队列&quot;</span></span><br><span class="line">openclaw cron add --schedule <span class="string">&quot;*/30 * * * *&quot;</span> --message <span class="string">&quot;监控服务健康状态&quot;</span></span><br><span class="line">openclaw cron list</span><br><span class="line">openclaw cron run &lt;<span class="built_in">id</span>&gt;          <span class="comment"># 手动触发</span></span><br></pre></td></tr></table></figure>
+
+<p>Cron 任务有两种执行模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>main</strong></td>
+<td>将任务文本作为系统事件注入主会话，通过心跳回合执行（共享主会话上下文）</td>
+</tr>
+<tr>
+<td><strong>isolated</strong></td>
+<td>创建独立的 <code>cron:&lt;jobId&gt;</code> 会话，执行一次完整的 Agent 回合（独立上下文）</td>
+</tr>
+</tbody></table>
+<p>main 模式适合需要访问主会话历史的任务（如”总结今天的对话”）；isolated 模式适合无状态的独立任务（如”检查服务器状态”），不会污染主会话上下文。</p>
+<p>Cron 任务的超时策略：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>默认超时</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Agent 回合</td>
+<td>60 分钟</td>
+</tr>
+<tr>
+<td>普通任务</td>
+<td>10 分钟</td>
+</tr>
+</tbody></table>
+<p>连续失败时使用指数退避（30s → 1min → …），连续失败 2 次后发送告警通知。</p>
+<h3 id="9-5-单回合的执行边界"><a href="#9-5-单回合的执行边界" class="headerlink" title="9.5 单回合的执行边界"></a>9.5 单回合的执行边界</h3><p>每个 Agent 回合的执行时间受 <code>timeoutSeconds</code> 控制（<code>src/agents/timeout.ts</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>agents.defaults.timeoutSeconds</code></td>
+<td>600 秒</td>
+<td>单回合超时（10 分钟）</td>
+</tr>
+<tr>
+<td><code>timeoutSeconds: 0</code></td>
+<td>—</td>
+<td>禁用超时（实际上限约 24.9 天）</td>
+</tr>
+<tr>
+<td><code>subagents.runTimeoutSeconds</code></td>
+<td>继承</td>
+<td>子代理独立超时</td>
+</tr>
+</tbody></table>
+<p>在一个回合内，Agent 可以 <strong>无限次调用工具</strong>——Pi 框架的执行循环没有硬性的工具调用次数限制。但有一个可选的 <strong>工具循环检测</strong> 机制（<code>src/agents/tool-loop-detection.ts</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>阈值</th>
+<th>值</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>warning</td>
+<td>10 次</td>
+<td>记录警告（相同工具+参数+结果连续重复）</td>
+</tr>
+<tr>
+<td>critical</td>
+<td>20 次</td>
+<td>阻断该会话的执行</td>
+</tr>
+<tr>
+<td>全局熔断</td>
+<td>30 次</td>
+<td>全局熔断，防止失控</td>
+</tr>
+</tbody></table>
+<h3 id="9-6-会话持续性：跨回合的记忆"><a href="#9-6-会话持续性：跨回合的记忆" class="headerlink" title="9.6 会话持续性：跨回合的记忆"></a>9.6 会话持续性：跨回合的记忆</h3><p>Agent 的持续运行之所以有意义，是因为 <strong>会话跨回合持久化</strong>：</p>
+<ul>
+<li><strong>会话存储</strong>：<code>~/.openclaw/sessions/</code> 下的 JSON 文件，每个 Agent 有独立的存储路径</li>
+<li><strong>会话生命期</strong>：无限——没有 <code>maxTurns</code> 或 <code>maxDuration</code> 限制，一个会话可以跨越数天甚至数周</li>
+<li><strong>回合间隔</strong>：不限——两次回合之间可以间隔几秒（心跳），也可以间隔几天（等用户消息）</li>
+</ul>
+<p>每次回合结束后，Pi 的 SessionManager 自动将对话历史写入磁盘。下一回合（无论是用户消息、心跳还是 Cron 触发的）加载同一个会话文件，Agent 就能”记住”之前所有交互。</p>
+<p>结合上下文压缩（详见上下文记忆篇），即使对话历史很长，Agent 也能在有限的上下文窗口内保持连贯的记忆。</p>
+<h3 id="9-7-唤醒来源全景"><a href="#9-7-唤醒来源全景" class="headerlink" title="9.7 唤醒来源全景"></a>9.7 唤醒来源全景</h3><p>Agent 回合可以被多种来源触发，形成一个 <strong>事件驱动 + 定时调度</strong> 的混合执行模型：</p>
+<div class="mermaid">flowchart TD
+  subgraph 被动触发[&quot;被动触发（用户驱动）&quot;]
+    T1[&quot;用户消息\nTelegram &#x2F; Discord &#x2F; WhatsApp &#x2F; CLI&quot;]
+  end
+
+  subgraph 主动触发[&quot;主动触发（系统驱动）&quot;]
+    T2[&quot;Heartbeat 定时器\n（默认每 30 分钟）&quot;]
+    T3[&quot;Cron 定时任务\n（cron 表达式调度）&quot;]
+    T4[&quot;exec 命令完成&quot;]
+    T5[&quot;Webhook &#x2F; Hook&quot;]
+    T6[&quot;通道事件\n（Slack 编辑&#x2F;反应&#x2F;Pin 等）&quot;]
+    T7[&quot;Gateway 重启通知&quot;]
+  end
+
+  T1 &amp; T2 &amp; T3 --&gt; R[&quot;Agent 回合执行\n（getReplyFromConfig）&quot;]
+  T4 &amp; T5 &amp; T6 &amp; T7 --&gt; R
+
+  R --&gt; S[&quot;会话持久化\n写入磁盘&quot;]
+  S -.-&gt;|&quot;下一回合加载&quot;| R
+
+  style T1 fill:#e3f2fd
+  style T2 fill:#e8f5e9
+  style T3 fill:#e8f5e9
+  style T4 fill:#fff3e0
+  style T5 fill:#fff3e0
+  style T6 fill:#fff3e0
+  style T7 fill:#fff3e0</div>
+
+<p>所有触发源最终都汇聚到同一个 <code>getReplyFromConfig()</code> 入口——Agent 不区分是用户主动找它还是系统定时唤醒它，执行逻辑完全一致。差异只在于提示词内容（心跳用 HEARTBEAT_PROMPT，Cron 用任务文本，用户消息用原文）和结果投递目标。</p>
+<hr>
+<p>以上覆盖了 Pi 框架集成、工具组装与 7 层策略管线、事件流处理、Subagent 生命周期管理、Auth Profile 轮换、Skills 预算注入，以及 Agent 通过心跳、系统事件和 Cron 实现 7×24 自主持续运行的回合制架构。</p>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author_group"><a class="post-copyright__author_img" href="/about/"><img class="post-copyright__author_img_front" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"></a><div class="post-copyright__author_name">HDi - 随便记</div><div class="post-copyright__author_desc"></div></div><div class="post-tools" id="post-tools"><div class="post-tools-left"><div id="quit-box" onclick="RemoveRewardMask()"></div><div class="post-reward"><div class="reward-button" title="赞赏作者" onclick="AddRewardMask()"><i class="solitude fa-solid fa-heart"></i>赞赏作者</div><div class="reward-main"><ul class="reward-all"><span class="reward-title">感谢你的欣赏！</span><ul class="reward-group"><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/wechatpay.JPG" alt="wechat" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">wechat</div></li><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/alipay.JPG" alt="alipay" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">alipay</div></li></ul><a class="reward-main-btn" href="/about/"><div class="reward-text">赞赏名单</div><div class="reward-dec">因为你的支持，我感受到写文章的价值。</div></a></ul></div></div><script>function RemoveRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "none";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "none";
+    }
+}
+
+function AddRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "flex";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "flex";
+    }
+}</script></div></div><div class="social-share"><a class="social-share-ico icon-qq" target="_blank" rel="noopener" href="https://connect.qq.com/widget/shareqq/index.html?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F12%2F2026-03-12-Agent%25E8%25BF%2590%25E8%25A1%258C%25E6%2597%25B6%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9AAgent%20%E8%BF%90%E8%A1%8C%E6%97%B6%E2%80%94%E2%80%94LLM%20%E7%BC%96%E6%8E%92%E4%B8%8E%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C&amp;desc=undefined&amp;summary=undefined&amp;site=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9AAgent%20%E8%BF%90%E8%A1%8C%E6%97%B6%E2%80%94%E2%80%94LLM%20%E7%BC%96%E6%8E%92%E4%B8%8E%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C&amp;pics=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-12.webp" title="分享到QQ"><i class="solitude fab fa-qq"></i></a><a class="social-share-ico icon-weibo" target="_blank" rel="noopener" href="http://service.weibo.com/share/share.php?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F12%2F2026-03-12-Agent%25E8%25BF%2590%25E8%25A1%258C%25E6%2597%25B6%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9AAgent%20%E8%BF%90%E8%A1%8C%E6%97%B6%E2%80%94%E2%80%94LLM%20%E7%BC%96%E6%8E%92%E4%B8%8E%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C&amp;pic=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-12.webp" title="分享到微博"><i class="solitude fab fa-weibo"></i></a><div class="social-share-ico icon-link" onclick="utils.copy(&quot;http://example.com/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/&quot;)" title="复制文章链接"><i class="solitude fas fa-link"></i></div><div class="social-share-ico icon-qrcode" title="使用手机扫码阅读这篇文章"><i class="solitude fas fa-qrcode"></i><div class="share-main"><div class="share-main-all"><div id="qrcode"></div><div class="reward-dec">使用手机扫码阅读这篇文章</div></div></div><script pjax>typeof QRCode === 'function' && new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/');
+window.addEventListener('DOMContentLoaded', () => {
+    new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/');
+});
+</script></div></div><div class="post-copyright__notice"><span class="post-copyright-info">本文是原创文章，采用<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">CC BY-NC-SA 4.0</a>协议，完整转载请注明来自<a href="/">HDi - 随便记</a></span></div></div><div class="post-tools-right"><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型<span class="tagsPageCount">13</span></span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw<span class="tagsPageCount">8</span></span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析<span class="tagsPageCount">8</span></span></a></div></div></div><nav class="needEndHide pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">OpenClaw 设计解析（六）：上下文记忆</div></div></a></div><div class="next-post pull-right"><a href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="solitude fa-solid fa-star"></i><span>喜欢这篇的人也看了</span><div class="relatedPosts-link"><a onclick="event.preventDefault(); toRandomPost();" href="javascript:void(0);" rel="external nofollow" data-pjax-state="">随便逛逛</a></div></div><div class="relatedPosts-list"><div><a href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（八）：安全模型</div></div></a></div><div><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（七）：插件系统</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><div class="author-info__top-group"><div class="author-info__sayhi" id="author-info__sayhi" onclick="sco.changeSayHelloText()">sayhello.morning</div></div></div><div class="avatar-img-group"><img class="avatar-img" alt="头像" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><div class="avatar-sticker"><img class="avatar-sticker-img" src="https://file-1305436646.file.myqcloud.com/blog-icon/EMOJI-44.png" alt="心情贴纸"></div></div><div class="author-info__description_group"><div class="author-info__description">分享自己对技术成长的<b>总结梳理</b>，对新事物或者爱好的<b>探索历程</b>。</div><div class="author-info__description2">相信你可以在这里找到对你有用的知识和教程。</div></div><div class="author-info__bottom-group"><a class="author-info__bottom-group-left" href="/about/"><div class="author-info__name">HDi</div><div class="author-info__desc"></div></a><div class="card-info-social-icons is-center"><a class="social-icon" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a></div></div></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="solitude fa-solid fa-bars"></i><span>文章目录</span></div><div class="toc-content" id="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#OpenClaw-%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9AAgent-%E8%BF%90%E8%A1%8C%E6%97%B6%E2%80%94%E2%80%94LLM-%E7%BC%96%E6%8E%92%E4%B8%8E%E5%B7%A5%E5%85%B7%E6%89%A7%E8%A1%8C"><span class="toc-text">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-Pi-%E6%A1%86%E6%9E%B6%E9%9B%86%E6%88%90"><span class="toc-text">1. Pi 框架集成</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Pi-%E6%8F%90%E4%BE%9B%E7%9A%84%E4%B8%89%E4%B8%AA%E6%A0%B8%E5%BF%83%E6%8A%BD%E8%B1%A1"><span class="toc-text">Pi 提供的三个核心抽象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OpenClaw-%E4%B8%8E-Pi-%E7%9A%84%E5%88%86%E5%B7%A5"><span class="toc-text">OpenClaw 与 Pi 的分工</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Agent-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="toc-text">2. Agent 启动流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E9%98%9F%E5%88%97%E5%85%A5%E9%98%9F%E4%B8%8E%E5%B7%A5%E4%BD%9C%E5%8C%BA%E8%A7%A3%E6%9E%90"><span class="toc-text">2.1 队列入队与工作区解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Hook-%E9%A2%84%E6%A3%80%E4%B8%8E%E6%A8%A1%E5%9E%8B%E8%A7%A3%E6%9E%90"><span class="toc-text">2.2 Hook 预检与模型解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%87%AD%E8%AF%81%E4%BF%9D%E6%B4%BB%EF%BC%9AAuth-Profile-%E8%BD%AE%E6%8D%A2-Token-%E8%87%AA%E5%8A%A8%E5%88%B7%E6%96%B0"><span class="toc-text">2.3 凭证保活：Auth Profile 轮换 + Token 自动刷新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E4%B8%8A%E4%B8%8B%E6%96%87%E7%AA%97%E5%8F%A3%E5%AE%88%E6%8A%A4"><span class="toc-text">2.4 上下文窗口守护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E6%89%A7%E8%A1%8C%E5%BE%AA%E7%8E%AF"><span class="toc-text">2.5 执行循环</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%B7%A5%E5%85%B7%E7%BB%84%E8%A3%85%E7%AE%A1%E7%BA%BF"><span class="toc-text">3. 工具组装管线</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-1%EF%BC%9ACore-Tools%EF%BC%88pi-coding-agent%EF%BC%89"><span class="toc-text">来源 1：Core Tools（pi-coding-agent）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-2%EF%BC%9ASandbox-Tools%EF%BC%88%E5%AE%B9%E5%99%A8%E5%8C%96%E5%8F%98%E4%BD%93%EF%BC%89"><span class="toc-text">来源 2：Sandbox Tools（容器化变体）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-3%EF%BC%9Aapply-patch%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%89"><span class="toc-text">来源 3：apply_patch（可选）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-4%EF%BC%9Aexec-%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86"><span class="toc-text">来源 4：exec + 进程管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-5%EF%BC%9AChannel-Agent-Tools"><span class="toc-text">来源 5：Channel Agent Tools</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-6%EF%BC%9AOpenClaw-Tools"><span class="toc-text">来源 6：OpenClaw Tools</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%A5%E6%BA%90-7%EF%BC%9APlugin-Tools%EF%BC%88%E5%8A%A8%E6%80%81%E5%8A%A0%E8%BD%BD%EF%BC%89"><span class="toc-text">来源 7：Plugin Tools（动态加载）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Provider-%E9%80%82%E9%85%8D"><span class="toc-text">Provider 适配</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-7-%E5%B1%82%E5%B7%A5%E5%85%B7%E7%AD%96%E7%95%A5%E7%AE%A1%E7%BA%BF"><span class="toc-text">4. 7 层工具策略管线</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E8%A7%84%E5%88%99%EF%BC%9A%E5%8F%AA%E8%83%BD%E6%94%B6%E7%AA%84%EF%BC%8C%E4%B8%8D%E8%83%BD%E6%89%A9%E5%A4%A7"><span class="toc-text">核心规则：只能收窄，不能扩大</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BE%E4%BE%8B"><span class="toc-text">举例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%A1%E7%BA%BF%E7%BB%93%E6%9E%84"><span class="toc-text">管线结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%A1%E7%BA%BF%E6%89%A7%E8%A1%8C"><span class="toc-text">管线执行</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%BA%8B%E4%BB%B6%E6%B5%81%E8%AE%A2%E9%98%85"><span class="toc-text">5. 事件流订阅</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86"><span class="toc-text">关键事件处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%94%99%E8%AF%AF%E6%8A%91%E5%88%B6%E7%AD%96%E7%95%A5"><span class="toc-text">错误抑制策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-Subagent-%E7%B3%BB%E7%BB%9F"><span class="toc-text">6. Subagent 系统</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AD%90%E4%BB%A3%E7%90%86%E8%BF%90%E8%A1%8C%E8%AE%B0%E5%BD%95"><span class="toc-text">子代理运行记录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%B8%B8%E9%87%8F"><span class="toc-text">生命周期常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AD%A4%E5%84%BF%E6%A3%80%E6%B5%8B"><span class="toc-text">孤儿检测</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-Skills-%E7%B3%BB%E7%BB%9F"><span class="toc-text">7. Skills 系统</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%80%E8%83%BD%E6%9D%A5%E6%BA%90%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-text">技能来源优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A2%84%E7%AE%97%E6%8E%A7%E5%88%B6"><span class="toc-text">预算控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%BD%9C%E5%8C%BA%E5%90%8C%E6%AD%A5"><span class="toc-text">工作区同步</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B%E5%85%A8%E6%99%AF"><span class="toc-text">8. 执行流程全景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-Agent-%E6%8C%81%E7%BB%AD%E8%BF%90%E8%A1%8C%EF%BC%9A7%C3%9724-%E8%87%AA%E4%B8%BB%E6%89%A7%E8%A1%8C"><span class="toc-text">9. Agent 持续运行：7×24 自主执行</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1%EF%BC%9A%E5%9B%9E%E5%90%88%E5%88%B6%EF%BC%8C%E8%80%8C%E9%9D%9E%E5%B8%B8%E9%A9%BB%E8%BF%9B%E7%A8%8B"><span class="toc-text">核心设计：回合制，而非常驻进程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-Heartbeat%EF%BC%9A%E5%AE%9A%E6%97%B6%E8%87%AA%E4%B8%BB%E5%B7%A1%E6%A3%80"><span class="toc-text">9.1 Heartbeat：定时自主巡检</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-Heartbeat-%E9%85%8D%E7%BD%AE"><span class="toc-text">9.2 Heartbeat 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E7%B3%BB%E7%BB%9F%E4%BA%8B%E4%BB%B6%EF%BC%9A%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8%E7%9A%84-Agent-%E5%94%A4%E9%86%92"><span class="toc-text">9.3 系统事件：事件驱动的 Agent 唤醒</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-Cron%EF%BC%9A%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6"><span class="toc-text">9.4 Cron：计划任务调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-5-%E5%8D%95%E5%9B%9E%E5%90%88%E7%9A%84%E6%89%A7%E8%A1%8C%E8%BE%B9%E7%95%8C"><span class="toc-text">9.5 单回合的执行边界</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-6-%E4%BC%9A%E8%AF%9D%E6%8C%81%E7%BB%AD%E6%80%A7%EF%BC%9A%E8%B7%A8%E5%9B%9E%E5%90%88%E7%9A%84%E8%AE%B0%E5%BF%86"><span class="toc-text">9.6 会话持续性：跨回合的记忆</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-7-%E5%94%A4%E9%86%92%E6%9D%A5%E6%BA%90%E5%85%A8%E6%99%AF"><span class="toc-text">9.7 唤醒来源全景</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="solitude fa-solid fa-map"></i><span>最近发布</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img alt="OpenClaw 设计解析（八）：安全模型" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp"></a><div class="content"><span class="title" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型">OpenClaw 设计解析（八）：安全模型</span><span class="article-recent_post_categories" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img alt="OpenClaw 设计解析（七）：插件系统" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp"></a><div class="content"><span class="title" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统">OpenClaw 设计解析（七）：插件系统</span><span class="article-recent_post_categories" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆"><img alt="OpenClaw 设计解析（六）：上下文记忆" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp"></a><div class="content"><span class="title" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆">OpenClaw 设计解析（六）：上下文记忆</span><span class="article-recent_post_categories" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"><img alt="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-12.webp"></a><div class="content"><span class="title" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</span><span class="article-recent_post_categories" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"><img alt="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-11.webp"></a><div class="content"><span class="title" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</span><span class="article-recent_post_categories" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/">大模型</span></div></div></div></div></div></div></main><footer id="footer"><div id="st-footer-bar"><div class="footer-logo"><span>HDi</span></div><div class="footer-bar-description">Articles from HDi.</div><a class="footer-bar-link" href="/about/">Learn more</a></div><div id="footer_deal"><a class="deal_link" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a><div class="nolazyload footer_mini_logo" id="footer_mini_logo" title="返回顶部" onclick="sco.toTop()"><img src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" alt="返回顶部"></div><a class="deal_link" target="_blank" rel="noopener" href="https://www.xiaohongshu.com/user/profile/5ffb06bf0000000001003e37" title="Xiaohongshu"><i class="solitude  fa fa-book"></i></a></div><div id="st-footer"></div><div id="footer-bar"><div class="footer-bar-links"><div class="footer-bar-left"><div class="copyright">© 2024 - 2026 By&nbsp;<a class="footer-bar-link" href="/">HDi</a></div></div><div class="footer-bar-right"><a class="footer-bar-link" target="_blank" rel="noopener" href="https://github.com/everfu/hexo-theme-solitude" alt="主题">主题</a></div></div></div></footer></div><!-- right_menu--><div id="rightMenu"><div class="rightMenu-group rightMenu-small"><div class="rightMenu-item" id="menu-backward"><i class="solitude fa-solid fa-arrow-left"></i></div><div class="rightMenu-item" id="menu-forward"><i class="solitude fa-solid fa-arrow-right"></i></div><div class="rightMenu-item" id="menu-refresh"><i class="solitude fa-solid fa-arrow-rotate-right"></i></div><div class="rightMenu-item" id="menu-top"><i class="solitude fa-solid fa-arrow-up"></i></div></div><div class="rightMenu-group rightMenu-line rightMenuPlugin"><div class="rightMenu-item" id="menu-copytext"><i class="solitude fa-solid fa-clone"></i><span>复制选中文本</span></div><div class="rightMenu-item" id="menu-pastetext"><i class="solitude fa-solid fa-clipboard"></i><span>粘贴文本</span></div><div class="rightMenu-item" id="menu-newwindow"><i class="solitude fa-regular fa-window-maximize"></i><span>新窗口打开</span></div><div class="rightMenu-item" id="menu-copylink"><i class="solitude fa-solid fa-link"></i><span>复制链接地址</span></div><div class="rightMenu-item" id="menu-copyimg"><i class="solitude fa-solid fa-clone"></i><span>复制此图片</span></div><div class="rightMenu-item" id="menu-downloadimg"><i class="solitude fa-solid fa-cloud-arrow-down"></i><span>下载此图片</span></div><div class="rightMenu-item" id="menu-music-toggle"><i class="solitude fa-solid fa-play"></i><span>播放音乐</span></div><div class="rightMenu-item" id="menu-music-back"><i class="solitude fa-solid fa-backward"></i><span>切换到上一首</span></div><div class="rightMenu-item" id="menu-music-forward"><i class="solitude fa-solid fa-forward"></i><span>切换到下一首</span></div><div class="rightMenu-item" id="menu-music-copyMusicName"><i class="solitude fa-solid fa-clone"></i><span>复制歌名</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-randomPost" onclick="toRandomPost()||rm.hideRightMenu()"><i class="solitude fas fa-tower-broadcast"></i><span>随机文章</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/categories/')||rm.hideRightMenu()"><i class="solitude fas fa-clone"></i><span>全部分类</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/tags/')||rm.hideRightMenu()"><i class="solitude fas fa-tags"></i><span>全部标签</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-darkmode" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span class="menu-darkmode-text">深色模式</span></div></div></div><div id="rightmenu-mask"></div><!-- inject body--><div><script src="/js/utils.js?v=2.0.6"></script><script src="/js/main.js?v=2.0.6"></script><script src="/js/third_party/waterfall.min.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pjax/0.2.8/pjax.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script><script src="/js/third_party/universe.min.js?v=2.0.6"></script><script>dark()
+</script><script src="https://cdnjs.cloudflare.com/ajax/libs/node-snackbar/0.1.16/snackbar.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.umd.min.js"></script><script>var meting_api = 'https://meting.qjqq.cn/?server=:server&type=:type&id=:id&auth=:auth&r=:r';</script><script src="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/meting/2.0.1/Meting.min.js"></script><script>const coverColorConfig = {
+    api: 'https://api.qjqq.cn/api/Imgcolor?img=',
+    time: 43200000
+}</script><script src="/js/covercolor/api.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.2.4/pace.min.js"></script><script src="/js/right_menu.js?v=2.0.6"></script><script>
+  (function() {
+    function getMermaidConfig(mode) {
+      var isDark = mode === 'dark';
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          fontSize: '14px',
+          /* Persona 配色基础变量 — 具体颜色由 CSS 按形状覆盖 */
+          primaryColor:       '#E30B20',
+          primaryBorderColor: '#000000',
+          primaryTextColor:   '#ffffff',
+          secondaryColor:     '#FFD700',
+          secondaryBorderColor:'#000000',
+          secondaryTextColor: '#000000',
+          tertiaryColor:      '#FF8C00',
+          tertiaryBorderColor:'#000000',
+          tertiaryTextColor:  '#000000',
+          lineColor:          '#000000',
+          textColor:          '#000000',
+          nodeBorder:         '#000000',
+          clusterBkg:         isDark ? '#2a2a2a' : '#fff8dc',
+          clusterBorder:      '#000000',
+          edgeLabelBackground:'transparent',
+          /* Sequence diagram */
+          actorBkg:           '#E30B20',
+          actorBorder:        '#000000',
+          actorTextColor:     '#ffffff',
+          actorLineColor:     '#000000',
+          signalColor:        '#000000',
+          signalTextColor:    '#000000',
+          labelBoxBkgColor:   '#FFD700',
+          labelBoxBorderColor:'#000000',
+          labelTextColor:     '#000000',
+          loopTextColor:      '#000000',
+          noteBkgColor:       '#FFD700',
+          noteBorderColor:    '#000000',
+          noteTextColor:      '#000000',
+          activationBkgColor: '#FF8C00',
+          activationBorderColor:'#000000',
+          sequenceNumberColor:'#ffffff',
+          background:         isDark ? '#1a1a1a' : '#ffffff'
+        }
+      };
+    }
+    var initMode = document.documentElement.getAttribute('data-theme') || 'light';
+    mermaid.initialize(getMermaidConfig(initMode));
+    /* Register theme change hook for dark/light toggle */
+    window.globalFn = window.globalFn || {};
+    window.globalFn.themeChange = window.globalFn.themeChange || {};
+    window.globalFn.themeChange.mermaid = function(mode) {
+      mermaid.initialize(getMermaidConfig(mode));
+      document.querySelectorAll('.mermaid[data-processed]').forEach(function(el) {
+        el.removeAttribute('data-processed');
+      });
+      mermaid.run();
+    };
+  })();
+</script>
+<div class="js-pjax"><script>mermaid.run();</script></div></div><!-- pjax--><script>const pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: ['title','#body-wrap','#site-config','meta[name="description"]','.js-pjax','meta[property^="og:"]','#config-diff'],
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+})
+
+document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+})
+
+document.addEventListener('pjax:complete', () => {
+    window.refreshFn()
+
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+        const newScript = document.createElement('script')
+        const content = item.text || item.textContent || item.innerHTML || ""
+        Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        newScript.appendChild(document.createTextNode(content))
+        item.parentNode.replaceChild(newScript, item)
+    })
+
+    GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+})
+
+document.addEventListener('pjax:error', (e) => {
+    if (e.request.status === 404) {
+        pjax.loadUrl('/404.html')
+    }
+})</script><!-- theme--><script>initTheme = () => {
+    let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const cachedMode = utils.saveToLocal.get('theme');
+    if (cachedMode === undefined) {
+        const nowMode =
+            isDarkMode ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', nowMode);
+    } else {
+        document.documentElement.setAttribute('data-theme', cachedMode);
+    }
+    typeof rm === 'object' && rm.mode(cachedMode === 'dark' && isDarkMode)
+}
+initTheme()</script><!-- google adsense--><!-- search--><!-- Tianli-Talk--><!-- music--><div class="needEndHide" id="nav-music" onclick="sco.musicToggle()"><div id="nav-music-hoverTips">音乐已暂停</div><meting-js id="12344278889" server="netease" type="playlist" mutex="true" preload="none" data-lrctype="0" order="random" theme="var(--efu-main)"></meting-js></div></body></html><script>const posts=["2026/03/15/2026-03-15-安全模型/","2026/03/14/2026-03-14-插件系统/","2026/03/13/2026-03-13-上下文记忆/","2026/03/12/2026-03-12-Agent运行时/","2026/03/11/2026-03-11-多通道架构/","2026/03/10/2026-03-10-Gateway/","2026/03/07/2026-03-07-CLI/","2026/03/02/2026-03-02-项目概览与架构全景/","2025/08/20/2025-08-20-大模型 Agent 实践/","2025/06/09/2025-06-09-大模型 Rag 实践/","2025/02/09/2025-02-09-交易系统构建/","2024/12/15/2024-12-15-比特币价值分析 copy/","2024/12/14/2024-12-14-投资交易初探/","2024/12/13/2024-12-13-加密货币概览/","2024/08/19/2024-08-19-大模型 Fine-tuning 实践/","2024/07/03/2024-07-03-解析大型语言模型的高效训练与推理之道/","2024/06/03/2024-06-03-《全面理解机器智能与生成式 AI 加速的新工业革命》/","2024/05/25/2024-05-25-faas-本地调试/","2024/05/24/2024-05-24-faas-静态页面/","2024/05/23/2024-05-23-faas-数据库能力/","2024/05/22/2024-05-22-faas-服务治理/","2024/05/21/2024-05-21-faas-编译部署/","2023/10/19/2023-10-19-faas-运行时/","2023/10/16/2023-10-16-faas-整体设计/","2023/08/14/2023-08-14-《富爸爸穷爸爸》读书笔记/","2023/02/03/2023-02-03-laf平台学习/","2022/10/14/2022-10-14-NodeJS学习/","2022/05/01/2022-05-01-webpack构建提速插件/","2022/04/14/2022-04-14-webpack tree shaking 记录/","2022/02/10/2022-02-10-NestJS设计思想/","2022/01/28/2022-01-28-前端项目构建速度优化调研/","2021/12/04/2021-12-04-px2rem或px2vw响应式方案探究/","2021/10/20/2021-10-20-hexo源码分析（四）/","2021/10/19/2021-10-19-hexo源码分析（三）/","2021/10/11/2021-10-11-hexo源码分析（二）/","2021/09/30/2021-09-30-hexo源码分析（一）/","2021/07/29/2021-07-29-可视化上报埋点方案/","2021/07/25/2021-07-25-脚手架设计/","2021/07/21/2021-07-21-业务基础库封装设计/","2021/06/10/2021-06-10-JWT梳理/","2020/12/07/2020-12-07-Vue生命周期/","2020/12/07/2020-12-07-Vuex整理/","2020/12/07/2020-12-07-Vue-Router/","2020/12/07/2020-12-07-Vue整理/","2020/12/06/2020-12-06-TCP协议/","2020/12/05/2020-12-05-POST和GET区别/","2020/12/04/2020-12-04-OSI模型整理/","2020/12/03/2020-12-03-微任务和宏任务/","2020/12/03/2020-12-03-JavaScript的面向对象/","2020/12/03/2020-12-03-JavaScript总结/","2020/12/02/2020-12-02-HTTP协议/","2020/12/01/2020-12-01-Cookie和Session对比/","2020/11/03/2020-11-03-常见性能优化手段/","2020/11/02/2020-11-02-浏览器同源跨域/","2020/11/01/2020-11-01-断点下载方案/","2020/05/07/2020-05-07-浏览器重绘和requestAnimationFrame/","2019/08/03/2019-08-03-vue-cli源码学习2.x/","2019/07/24/2019-07-24-vue-cli源码学习1.x/","2019/07/12/2019-07-12-Git分支相关/","2019/03/12/2019-03-12-使用webpack做一次项目优化/","2019/02/18/2019-02-18-解决回调地狱/","2019/01/19/2019-01-19-内联元素的一些探究/","2018/12/02/2018-12-02-论文查询平台/","2018/09/18/2018-09-18-CSS绘制三道杠和小圆点/","2018/09/10/2018-09-10-DDA算法和Bresenham算法画线/","2018/09/07/2018-09-07-CSS-iScroll实现水平滚动实例/","2018/09/06/2018-9-6小结/","2018/04/24/2018-04-24-JS原型链/","2018/04/16/2018-04-16-动手写一个hexo主题（下）/","2018/03/31/2018-03-31-gulp整理/","2018/03/28/2018-03-28-动手写一个hexo主题（上）/","2018/03/24/2018-03-24-npm的一些简单整理/","2018/03/17/2018-03-17-background属性和img标签/","2018/03/14/2018-03-14-如何实现一个轮播图/","2018/03/10/2018-03-10-Express+MySQL实现登陆界面/","2018/03/09/2018-03-09-数字图像处理和PS/","2018/03/06/2018-03-06-模板引擎ejs+gulp的使用/","2018/01/21/2018-1-21-JS对象整理/","2018/01/11/2018-1-11-实现一个问卷平台/","2017/10/24/2017-10-24-如何实现一个导航栏/","2017/10/18/2017-10-18-jQuery和原生DOM操作对比/","2017/10/10/2017-10-10-DOM操作/","2017/09/28/2017-09-28-页面常用布局整理/","2017/09/21/2017-09-21-hexo博客构建/"];function toRandomPost(){ pjax.loadUrl(GLOBAL_CONFIG.root+posts[Math.floor(Math.random()*posts.length)]); }</script>

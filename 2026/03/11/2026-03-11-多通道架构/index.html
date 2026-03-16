@@ -1,0 +1,605 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象 | HDi - 随便记</title><noscript>开启JavaScript才能访问本站哦~</noscript><link rel="icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><!-- index.css--><link rel="stylesheet" href="/css/index.css?v=2.0.6"><!-- inject head--><link rel="canonical" href="http://example.com/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"><!-- aplayer--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.css"><!-- swiper--><!-- fancybox ui--><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.min.css"><!-- katex--><!-- Open Graph--><meta name="description" content="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象 OpenClaw 多通道架构：将不同消息平台统一到 ChannelPlugin 接口。 本篇介绍 OpenClaw 的多通道（multi-channel）架构——让同一个 AI 助手接入 What"><!-- pwa--><meta name="apple-mobile-web-app-capable" content="HDi - 随便记"><meta name="theme-color" content="var(--efu-main)"><meta name="apple-mobile-web-app-status-bar-style" content="var(--efu-main)"><link rel="bookmark" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><link rel="apple-touch-icon" href="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" sizes="180x180"><script>console.log(' %c Solitude %c ' + '2.0.6' + ' %c https://github.com/everfu/hexo-theme-solitude',
+    'background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff',
+    'background:#ff9a9a ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff',
+    'background:unset ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff')
+</script><script defer src="https://cloud.umami.is/script.js" data-website-id="74f224fa-d3eb-4426-be2a-a67cbb900e1c"></script><script>(()=>{
+        const saveToLocal = {
+            set: function setWithExpiry(key, value, ttl) {
+                if (ttl === 0)
+                    return
+                const now = new Date()
+                const expiryDay = ttl * 86400000
+                const item = {
+                    value: value,
+                    expiry: now.getTime() + expiryDay
+                }
+                localStorage.setItem(key, JSON.stringify(item))
+            },
+            get: function getWithExpiry(key) {
+                const itemStr = localStorage.getItem(key)
+    
+                if (!itemStr) {
+                    return undefined
+                }
+                const item = JSON.parse(itemStr)
+                const now = new Date()
+    
+                if (now.getTime() > item.expiry) {
+                    localStorage.removeItem(key)
+                    return undefined
+                }
+                return item.value
+            }
+        };
+        window.utils = {
+            saveToLocal: saveToLocal,
+            getCSS: (url, id = false) => new Promise((resolve, reject) => {
+              const link = document.createElement('link')
+              link.rel = 'stylesheet'
+              link.href = url
+              if (id) link.id = id
+              link.onerror = reject
+              link.onload = link.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                link.onload = link.onreadystatechange = null
+                resolve()
+              }
+              document.head.appendChild(link)
+            }),
+            getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+              const script = document.createElement('script')
+              script.src = url
+              script.async = true
+              script.onerror = reject
+              script.onload = script.onreadystatechange = function() {
+                const loadState = this.readyState
+                if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+                script.onload = script.onreadystatechange = null
+                resolve()
+              }
+    
+              Object.keys(attr).forEach(key => {
+                script.setAttribute(key, attr[key])
+              })
+    
+              document.head.appendChild(script)
+            }),
+            addGlobalFn: (key, fn, name = false, parent = window) => {
+                const globalFn = parent.globalFn || {}
+                const keyObj = globalFn[key] || {}
+        
+                if (name && keyObj[name]) return
+        
+                name = name || Object.keys(keyObj).length
+                keyObj[name] = fn
+                globalFn[key] = keyObj
+                parent.globalFn = globalFn
+            },
+        }
+    })()</script><!-- global head--><script>const GLOBAL_CONFIG = {
+    root: '/',
+    algolia: undefined,
+    localsearch: undefined,
+    runtime: '2024-07-22 00:00:00',
+    lazyload: {
+        enable: false,
+        error: '/img/error_load.avif'
+    },
+    copyright: {"limit":50,"author":"作者: HDi","link":"链接: ","source":"来源: HDi - 随便记","info":"著作权归作者所有。 商业转载请联系作者获得授权，非商业转载请注明出处。"},
+    highlight: {"limit":600,"expand":true,"copy":true,"syntax":"highlight.js"},
+    randomlink: false,
+    lang: {"theme":{"dark":"已切换至深色模式","light":"已切换至浅色模式"},"copy":{"success":"复制成功","error":"复制失败"},"backtop":"返回顶部","time":{"day":"天前","hour":"小时前","just":"刚刚","min":"分钟前","month":"个月前"},"day":" 天","f12":"开发者模式已打开，请遵循GPL协议。","totalk":"无需删除空行，直接输入评论即可"},
+    aside: {
+        sayhello: {
+            morning: "✨ 一日之计在于晨",
+            noon: "午休的时间到了",
+            afternoon: "集中精力，攻克难关 🍵",
+            night: "不要太劳累了，早睡更健康",
+            goodnight: "晚安 😴",
+        },
+        sayhello2: ["💻 前端搬砖工","📷 摄影爱好者","💪 佛系健身人","🎨 绘画小能手","🏂 雪道破坏者","🎸 吉他一直落灰","🕙 倾向周密计划","✨ 独处获得能量"],
+        sayhello3: {
+            prefix: '好久不见，',
+            back: '欢迎再次回来，',
+        },
+    },
+    covercolor: {
+        enable: true
+    },
+    comment: false,
+    lightbox: 'fancybox',
+    post_ai: false,
+    right_menu: {"mode":{"dark":"深色模式","light":"浅色模式"},"img_error":"此图片无法复制与下载","music":{"start":"播放音乐","stop":"暂停音乐"}},
+    lure: false,
+    expire: false,
+};</script><!-- page-config head--><script id="config-diff">var PAGE_CONFIG = {
+    is_post: true,
+    is_page: false,
+    is_home: false,
+    page: '',
+    toc: true,
+    comment: false,
+    ai_text: false
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body id="body"><!-- universe--><canvas id="universe"></canvas><!-- background img--><!-- loading--><!-- console--><div id="console"><div class="close-btn" onclick="sco.hideConsole()"><i class="solitude fa-solid fa-xmark"></i></div><div class="console-card-group"><div class="console-card-group-right"><div class="console-card tags" onclick="sco.hideConsole()"><div class="card-content"><div class="author-content-item-tips">标签</div><div class="author-content-item-title">寻找感兴趣的领域</div></div><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div><div class="console-card history" onclick="sco.hideConsole()"><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2026/03/"><span class="card-archive-list-date">2026/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/08/"><span class="card-archive-list-date">2025/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/06/"><span class="card-archive-list-date">2025/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/02/"><span class="card-archive-list-date">2025/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/12/"><span class="card-archive-list-date">2024/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/08/"><span class="card-archive-list-date">2024/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/07/"><span class="card-archive-list-date">2024/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/06/"><span class="card-archive-list-date">2024/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/05/"><span class="card-archive-list-date">2024/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">5</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">2023/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">2023/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/02/"><span class="card-archive-list-date">2023/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/10/"><span class="card-archive-list-date">2022/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/05/"><span class="card-archive-list-date">2022/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/04/"><span class="card-archive-list-date">2022/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/02/"><span class="card-archive-list-date">2022/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2022/01/"><span class="card-archive-list-date">2022/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/12/"><span class="card-archive-list-date">2021/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/10/"><span class="card-archive-list-date">2021/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/09/"><span class="card-archive-list-date">2021/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/07/"><span class="card-archive-list-date">2021/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/06/"><span class="card-archive-list-date">2021/06</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/12/"><span class="card-archive-list-date">2020/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">12</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/11/"><span class="card-archive-list-date">2020/11</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/05/"><span class="card-archive-list-date">2020/05</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/08/"><span class="card-archive-list-date">2019/08</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/07/"><span class="card-archive-list-date">2019/07</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/03/"><span class="card-archive-list-date">2019/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/02/"><span class="card-archive-list-date">2019/02</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/01/"><span class="card-archive-list-date">2019/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/12/"><span class="card-archive-list-date">2018/12</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">1</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/09/"><span class="card-archive-list-date">2018/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">4</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/04/"><span class="card-archive-list-date">2018/04</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/03/"><span class="card-archive-list-date">2018/03</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">8</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2018/01/"><span class="card-archive-list-date">2018/01</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/10/"><span class="card-archive-list-date">2017/10</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">3</span><span class="card-archive-list-count-unit">篇</span></div></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2017/09/"><span class="card-archive-list-date">2017/09</span><div class="card-archive-list-count-group"><span class="card-archive-list-count">2</span><span class="card-archive-list-count-unit">篇</span></div></a></li></ul></div></div></div><div class="button-group"><div class="console-btn-item"><span class="darkmode_switchbutton" onclick="sco.switchDarkMode()" title="昼夜切换"><i class="solitude fa-solid fa-circle-half-stroke"></i></span></div><div class="console-btn-item" id="consoleHideAside"><span class="asideSwitch" onclick="sco.switchHideAside()" title="边栏显示控制"><i class="solitude fa-solid fa-mattress-pillow"></i></span></div><div class="console-btn-item" id="consoleMusic" onclick="sco.musicToggle()"><span class="music-switch" title="音乐开关"><i class="solitude fa-solid fa-compact-disc"></i></span></div></div><div class="console-mask" onclick="sco.hideConsole()"></div></div><!-- sidebar--><div id="sidebar" style="zoom: 1;"><div id="menu-mask" style="display: none;"></div><div id="sidebar-menus"><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">84</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">11</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">52</div></a></div></div></div><span class="sidebar-menu-item-title">功能</span><div class="sidebar-menu-item"><span class="darkmode_switchbutton menu-child" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span>显示模式</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div><span class="sidebar-menu-item-title">标签</span><div class="card-widget card-tags card-archives card-webinfo card-allinfo"><div class="card-tag-cloud"><a href="/tags/hexo/">hexo<sup>7</sup></a><a href="/tags/CSS/">CSS<sup>7</sup></a><a href="/tags/JavaScript/">JavaScript<sup>10</sup></a><a href="/tags/jQuery/">jQuery<sup>2</sup></a><a href="/tags/ejs/">ejs<sup>1</sup></a><a href="/tags/gulp/">gulp<sup>2</sup></a><a href="/tags/%E9%A1%B9%E7%9B%AE/">项目<sup>6</sup></a><a href="/tags/Express/">Express<sup>1</sup></a><a href="/tags/MySQL/">MySQL<sup>1</sup></a><a href="/tags/PS/">PS<sup>1</sup></a><a href="/tags/npm/">npm<sup>1</sup></a><a href="/tags/P5JS/">P5JS<sup>1</sup></a><a href="/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/">图形学<sup>1</sup></a><a href="/tags/Vue/">Vue<sup>5</sup></a><a href="/tags/Promise/">Promise<sup>1</sup></a><a href="/tags/%E6%80%BB%E7%BB%93/">总结<sup>1</sup></a><a href="/tags/%E4%BC%98%E5%8C%96/">优化<sup>1</sup></a><a href="/tags/webpack/">webpack<sup>1</sup></a><a href="/tags/%E6%80%A7%E8%83%BD/">性能<sup>1</sup></a><a href="/tags/HTTP/">HTTP<sup>3</sup></a><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器<sup>4</sup></a><a href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化<sup>1</sup></a><a href="/tags/vue/">vue<sup>2</sup></a><a href="/tags/cli/">cli<sup>2</sup></a><a href="/tags/TCP/">TCP<sup>1</sup></a><a href="/tags/OSI/">OSI<sup>1</sup></a><a href="/tags/JWT/">JWT<sup>1</sup></a><a href="/tags/Git/">Git<sup>1</sup></a><a href="/tags/Infra/">Infra<sup>11</sup></a><a href="/tags/%E8%84%9A%E6%89%8B%E6%9E%B6/">脚手架<sup>1</sup></a><a href="/tags/%E6%BA%90%E7%A0%81/">源码<sup>5</sup></a><a href="/tags/%E5%9F%8B%E7%82%B9%E4%B8%8A%E6%8A%A5/">埋点上报<sup>1</sup></a><a href="/tags/%E6%9E%84%E5%BB%BA%E9%80%9F%E5%BA%A6/">构建速度<sup>1</sup></a><a href="/tags/Webpack/">Webpack<sup>3</sup></a><a href="/tags/NestJS/">NestJS<sup>1</sup></a><a href="/tags/NodeJS/">NodeJS<sup>2</sup></a><a href="/tags/%E5%93%8D%E5%BA%94%E5%BC%8F/">响应式<sup>1</sup></a><a href="/tags/Babel/">Babel<sup>1</sup></a><a href="/tags/PostCSS/">PostCSS<sup>1</sup></a><a href="/tags/Faas/">Faas<sup>8</sup></a><a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记<sup>3</sup></a><a href="/tags/%E7%90%86%E8%B4%A2/">理财<sup>1</sup></a><a href="/tags/Laf/">Laf<sup>1</sup></a><a href="/tags/AI/">AI<sup>3</sup></a><a href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型<sup>13</sup></a><a href="/tags/%E5%8A%A0%E5%AF%86%E8%B4%A7%E5%B8%81/">加密货币<sup>4</sup></a><a href="/tags/%E6%8A%95%E8%B5%84/">投资<sup>4</sup></a><a href="/tags/%E6%AF%94%E7%89%B9%E5%B8%81/">比特币<sup>1</sup></a><a href="/tags/RAG/">RAG<sup>1</sup></a><a href="/tags/Agent/">Agent<sup>1</sup></a><a href="/tags/OpenClaw/">OpenClaw<sup>8</sup></a><a href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/">源码解析<sup>8</sup></a></div></div></div></div><!-- keyboard--><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav class="show" id="nav"><div id="nav-group"><div id="blog_name"><a id="site-name" href="/" title="返回博客主页"><span class="title">HDi</span><i class="solitude fa-solid fa-home"></i></a></div><div id="page-name-mask"><div id="page-name"><a id="page-name-text" onclick="sco.toTop()">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</a></div></div><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><span>首页</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>文章</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/archives/"><i class="solitude  fas fa-folder-closed"></i><span>列表</span></a></li><li><a class="site-page child" href="/categories/"><i class="solitude  fas fa-clone"></i><span>分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="solitude  fas fa-tags"></i><span>标签</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>我的</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/picture/"><i class="solitude  fas fa-image"></i><span>绘画作品</span></a></li><li><a class="site-page child" href="/photo/"><i class="solitude  fas fa-camera"></i><span>摄影作品</span></a></li><li><a class="site-page child" href="/music/"><i class="solitude  fas fa-music"></i><span>音乐馆</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><span>关于</span></a><ul class="menus_item_child"><li><a class="site-page child" href="/about/"><i class="solitude  fas fa-address-card"></i><span>关于本站</span></a></li></ul></div></div></div><div id="nav-left"></div><div id="nav-right"><div class="nav-button" id="randomPost_button"><a class="site-page" onclick="toRandomPost()" title="随机一篇文章" href="javascript:void(0);"><i class="solitude fa-solid fa-dice-d6"></i></a></div><div class="nav-button" id="nav-console"><a class="console_switchbutton" onclick="sco.showConsole()" title="中控台" href="javascript:void(0);"><label><i class="left"></i><i class="center"></i><i class="right"></i></label></a></div><div class="nav-button" id="nav-totop" onclick="sco.toTop()"><a class="totopbtn"><i class="solitude fa-solid fa-arrow-up"></i><span id="percent">0</span></a></div><div id="toggle-menu"><a class="site-page"><i class="solitude fa-solid fa-bars"></i></a></div></div></div></nav><div class="coverdiv" id="coverdiv"><img class="nolazyload" id="post-cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-11.webp" alt="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"></div><div id="post-info"><div id="post-firstinfo"><div class="meta-firstline"><a class="post-meta-original" title="该文章为原创文章，注意版权协议">原创</a><span class="post-meta-categories"><a class="post-meta-categories" href="/categories/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a></span><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型</span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw</span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-name tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析</span></a></div></div></div></div><h1 class="post-title">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</h1><div id="post-meta"><div class="meta-secondline"><span class="post-meta-date" title="发布于 2026-03-11 21:11:00"><i class="post-meta-icon solitude fa-solid fa-calendar-days"></i><time datetime="2026-03-11T13:11:00.000Z">2026-03-11T13:11:00.000Z</time></span><a class="post-meta-pv" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="文章热度"><i class="post-meta-icon solitude fa-solid fa-fire-flame-curved"></i><span id="busuanzi_value_page_pv"><i class="solitude fa-solid fa-spinner"></i></span></a></div></div></div><section class="main-hero-waves-area waves-area"><svg class="waves-svg" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M -160 44 c 30 0 58 -18 88 -18 s 58 18 88 18 s 58 -18 88 -18 s 58 18 88 18 v 44 h -352 Z"></path></defs><g class="parallax"><use href="#gentle-wave" x="48" y="0"></use><use href="#gentle-wave" x="48" y="3"></use><use href="#gentle-wave" x="48" y="5"></use><use href="#gentle-wave" x="48" y="7"></use></g></svg></section></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="OpenClaw-设计解析（四）：多通道架构——从-WhatsApp-到-Discord-的统一抽象"><a href="#OpenClaw-设计解析（四）：多通道架构——从-WhatsApp-到-Discord-的统一抽象" class="headerlink" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"></a>OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</h1><blockquote>
+<p>OpenClaw 多通道架构：将不同消息平台统一到 ChannelPlugin 接口。</p>
+</blockquote>
+<p>本篇介绍 OpenClaw 的<strong>多通道（multi-channel）架构</strong>——让同一个 AI 助手接入 WhatsApp、Telegram、Discord、Signal、Slack、iMessage、Matrix、IRC 等平台。</p>
+<hr>
+<h2 id="1-为什么多通道是核心设计"><a href="#1-为什么多通道是核心设计" class="headerlink" title="1. 为什么多通道是核心设计"></a>1. 为什么多通道是核心设计</h2><p>OpenClaw 的目标是<strong>把 AI 助手放到已有的对话场景</strong>。每个即时通讯平台的接入方式差异很大：</p>
+<table>
+<thead>
+<tr>
+<th>平台</th>
+<th>接入方式</th>
+<th>难点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Telegram</td>
+<td>Bot API（HTTP long-polling &#x2F; webhook）</td>
+<td>最简单，注册 BotFather 即用</td>
+</tr>
+<tr>
+<td>Discord</td>
+<td>Bot API（WebSocket Gateway）</td>
+<td>Guild&#x2F;Channel&#x2F;Thread 层级复杂</td>
+</tr>
+<tr>
+<td>WhatsApp</td>
+<td>WebSocket 逆向（Baileys）</td>
+<td>无官方 Bot API，需 QR 配对</td>
+</tr>
+<tr>
+<td>Signal</td>
+<td>signal-cli（REST wrapper）</td>
+<td>链接设备、身份验证复杂</td>
+</tr>
+<tr>
+<td>Slack</td>
+<td>Socket Mode</td>
+<td>OAuth 应用注册 + 事件订阅</td>
+</tr>
+<tr>
+<td>Matrix</td>
+<td>Client-Server API</td>
+<td>去中心化，homeserver 多样</td>
+</tr>
+</tbody></table>
+<p>OpenClaw 用 <strong>ChannelPlugin</strong> 体系统一这些差异。</p>
+<hr>
+<h2 id="2-Channel-抽象层"><a href="#2-Channel-抽象层" class="headerlink" title="2. Channel 抽象层"></a>2. Channel 抽象层</h2><h3 id="通道注册表"><a href="#通道注册表" class="headerlink" title="通道注册表"></a>通道注册表</h3><p>系统维护一个有序的通道 ID 列表，定义了内置通道的<strong>优先级排序</strong>，直接影响 CLI onboarding 时的通道选择顺序（Telegram 排第一，因为最容易上手）：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 内置通道优先级（影响 CLI 引导顺序）</span></span><br><span class="line"><span class="keyword">const</span> <span class="variable constant_">CHAT_CHANNEL_ORDER</span> = [</span><br><span class="line">  <span class="string">&quot;telegram&quot;</span>,</span><br><span class="line">  <span class="string">&quot;whatsapp&quot;</span>,</span><br><span class="line">  <span class="string">&quot;discord&quot;</span>,</span><br><span class="line">  <span class="string">&quot;irc&quot;</span>,</span><br><span class="line">  <span class="string">&quot;googlechat&quot;</span>,</span><br><span class="line">  <span class="string">&quot;slack&quot;</span>,</span><br><span class="line">  <span class="string">&quot;signal&quot;</span>,</span><br><span class="line">  <span class="string">&quot;imessage&quot;</span>,</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<p>每个通道都有元数据描述，包含 UI 展示名、文档路径、简介说明、图标等信息，用于 onboarding 向导展示：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每个通道的元数据（以 Telegram 为例）</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="attr">id</span>: <span class="string">&quot;telegram&quot;</span>,</span><br><span class="line">  <span class="attr">label</span>: <span class="string">&quot;Telegram&quot;</span>,                         <span class="comment">// UI 展示名</span></span><br><span class="line">  <span class="attr">selectionLabel</span>: <span class="string">&quot;Telegram (Bot API)&quot;</span>,      <span class="comment">// 选择列表中的名称</span></span><br><span class="line">  <span class="attr">docsPath</span>: <span class="string">&quot;/channels/telegram&quot;</span>,            <span class="comment">// 文档路径</span></span><br><span class="line">  <span class="attr">blurb</span>: <span class="string">&quot;simplest way to get started...&quot;</span>,   <span class="comment">// onboarding 简介</span></span><br><span class="line">  <span class="attr">systemImage</span>: <span class="string">&quot;paperplane&quot;</span>,                 <span class="comment">// SF Symbols 图标</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="通道-ID-归一化"><a href="#通道-ID-归一化" class="headerlink" title="通道 ID 归一化"></a>通道 ID 归一化</h3><p>通道 ID 支持别名（如 <code>imsg</code> → <code>imessage</code>、<code>gchat</code> → <code>googlechat</code>）。对于扩展通道（如 Matrix、MS Teams），归一化时会同时查询插件注册表，在已注册插件的 <code>id</code> 和 <code>aliases</code> 中匹配，从而统一处理内置通道和动态加载的扩展通道。</p>
+<hr>
+<h2 id="3-ChannelPlugin-接口：30-个-adapter-的协议"><a href="#3-ChannelPlugin-接口：30-个-adapter-的协议" class="headerlink" title="3. ChannelPlugin 接口：30+ 个 adapter 的协议"></a>3. ChannelPlugin 接口：30+ 个 adapter 的协议</h2><p>OpenClaw 通道体系的核心是 <code>ChannelPlugin</code> 类型。它是一个包含 30 多个可选 adapter 的大接口——每个 adapter 负责通道行为的一个切面：</p>
+<div class="mermaid">flowchart TB
+  subgraph CP[&quot;ChannelPlugin 接口（所有 adapter 可选，按需实现）&quot;]
+    direction LR
+    B[&quot;onboarding\n引导向导&quot;] ~~~ C[&quot;config\n账号解析&quot;] ~~~ D[&quot;security\nDM策略&quot;] ~~~ E[&quot;outbound\n发送消息&quot;] ~~~ F[&quot;gateway\n启动&#x2F;停止&quot;]
+    G[&quot;pairing\n配对授权&quot;] ~~~ H[&quot;mentions\n@提及&quot;] ~~~ I[&quot;streaming\n流式输出&quot;] ~~~ J[&quot;threading\n线程&#x2F;话题&quot;] ~~~ K[&quot;messaging\n消息格式化&quot;]
+    L[&quot;auth\n认证&quot;] ~~~ M[&quot;groups\n群组策略&quot;] ~~~ N[&quot;actions\n消息操作&quot;] ~~~ O[&quot;heartbeat\n心跳检测&quot;] ~~~ P[&quot;agentTools\n通道专属工具&quot;]
+  end
+  Q[&quot;极简通道: 只需 id + meta + capabilities + config&quot;]
+  R[&quot;完整通道（如 Telegram）: 实现几乎所有 adapter&quot;]
+  CP ~~~ Q ~~~ R</div>
+
+<p>核心结构如下（伪代码）：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> <span class="title class_">ChannelPlugin</span> = &#123;</span><br><span class="line">  <span class="attr">id</span>: <span class="title class_">ChannelId</span> <span class="comment">// 通道标识</span></span><br><span class="line">  <span class="attr">meta</span>: <span class="title class_">ChannelMeta</span> <span class="comment">// 元数据（名称、图标等）</span></span><br><span class="line">  <span class="attr">capabilities</span>: <span class="title class_">ChannelCapabilities</span> <span class="comment">// 能力声明</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// --- 30+ 个可选适配器，按需实现 ---</span></span><br><span class="line">  onboarding? <span class="comment">// CLI 引导向导</span></span><br><span class="line">  config <span class="comment">// 账号配置解析（唯一必选）</span></span><br><span class="line">  pairing? <span class="comment">// 配对/授权</span></span><br><span class="line">  security? <span class="comment">// DM 策略、访问控制</span></span><br><span class="line">  gateway? <span class="comment">// 启动/停止连接</span></span><br><span class="line">  outbound? <span class="comment">// 发送消息</span></span><br><span class="line">  streaming? <span class="comment">// 流式输出</span></span><br><span class="line">  threading? <span class="comment">// 线程/话题</span></span><br><span class="line">  messaging? <span class="comment">// 消息格式化</span></span><br><span class="line">  mentions? <span class="comment">// @提及处理</span></span><br><span class="line">  actions? <span class="comment">// 消息操作（回应等）</span></span><br><span class="line">  heartbeat? <span class="comment">// 心跳检测</span></span><br><span class="line">  agentTools? <span class="comment">// 通道专属 Agent 工具</span></span><br><span class="line">  <span class="comment">// ... 以及 auth, groups, directory, commands 等</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>capabilities</code> 声明通道支持的特性：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">capabilities</span>: &#123;</span><br><span class="line">  <span class="attr">chatTypes</span>: [<span class="string">&quot;direct&quot;</span>, <span class="string">&quot;group&quot;</span>, <span class="string">&quot;thread&quot;</span>],</span><br><span class="line">  <span class="attr">polls</span>: <span class="literal">true</span>,       <span class="comment">// 投票</span></span><br><span class="line">  <span class="attr">reactions</span>: <span class="literal">true</span>,    <span class="comment">// 表情回应</span></span><br><span class="line">  <span class="attr">threads</span>: <span class="literal">true</span>,      <span class="comment">// 线程</span></span><br><span class="line">  <span class="attr">media</span>: <span class="literal">true</span>,        <span class="comment">// 媒体文件</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>设计要点：</p>
+<ul>
+<li><strong>所有 adapter 都是可选的</strong>——通道只需实现自己支持的部分</li>
+<li>一个极简通道可能只有 <code>id</code>、<code>meta</code>、<code>capabilities</code> 和 <code>config</code></li>
+<li>Telegram 作为最成熟的通道实现了几乎所有 adapter</li>
+<li>支持<strong>热重载</strong>——通过 <code>reload.configPrefixes</code> 配置，当用户修改相关配置时无需重启 gateway</li>
+</ul>
+<hr>
+<h2 id="4-内置通道-vs-扩展通道"><a href="#4-内置通道-vs-扩展通道" class="headerlink" title="4. 内置通道 vs 扩展通道"></a>4. 内置通道 vs 扩展通道</h2><p>OpenClaw 的通道分两层：</p>
+<div class="mermaid">graph TB
+  subgraph builtin[&quot;内置通道 (src&#x2F;, 随核心发布)&quot;]
+    B1[&quot;Telegram — 最易上手\nWhatsApp — QR 配对\nDiscord — Bot API&quot;]
+    B2[&quot;Slack — Socket Mode\nSignal — signal-cli\niMessage — macOS only&quot;]
+  end
+  subgraph ext[&quot;扩展通道 (extensions&#x2F;, 独立 npm 包)&quot;]
+    E1[&quot;Matrix · MS Teams · 飞书\nIRC · Google Chat · LINE&quot;]
+    E2[&quot;Nostr · Twitch · Mattermost\nZalo · BlueBubbles · ...&quot;]
+  end
+  builtin --&gt; MC[&quot;统一 MsgContext&quot;]
+  ext --&gt; MC
+  MC --&gt; AGENT[&quot;Agent 运行时&quot;]</div>
+
+<p>扩展通道是独立的 npm 包，runtime 通过 <code>jiti</code> 别名加载 <code>openclaw/plugin-sdk</code>，无需在 <code>dependencies</code> 中声明 <code>workspace:*</code>（那会破坏 <code>npm install</code>）。这意味着<strong>社区可以在不 fork 核心代码的情况下添加新通道</strong>。</p>
+<hr>
+<h2 id="5-通道实现剖析：以-Telegram-为例"><a href="#5-通道实现剖析：以-Telegram-为例" class="headerlink" title="5. 通道实现剖析：以 Telegram 为例"></a>5. 通道实现剖析：以 Telegram 为例</h2><p>Telegram 是最成熟的内置通道，也是推荐的入门通道。</p>
+<h3 id="Bot-初始化"><a href="#Bot-初始化" class="headerlink" title="Bot 初始化"></a>Bot 初始化</h3><p>Bot 启动时需要配置以下关键参数：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Telegram Bot 核心配置</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="attr">token</span>: <span class="built_in">string</span>              <span class="comment">// Bot API token</span></span><br><span class="line">  <span class="attr">allowFrom</span>: <span class="built_in">string</span>[]        <span class="comment">// 白名单：谁能使用这个 bot</span></span><br><span class="line">  <span class="attr">mediaMaxMb</span>: <span class="built_in">number</span>         <span class="comment">// 媒体下载大小限制</span></span><br><span class="line">  <span class="attr">requireMention</span>: <span class="built_in">boolean</span>    <span class="comment">// 群聊是否需要 @提及才响应</span></span><br><span class="line">  <span class="attr">updateOffset</span>: <span class="built_in">number</span>       <span class="comment">// update ID 水位线，防止重启后重复处理</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>updateOffset</code>（水位线）是生产环境的关键细节——它持久化了已处理的最新 update ID，确保 bot 重启后不会重复处理消息。</p>
+<h3 id="消息处理流程"><a href="#消息处理流程" class="headerlink" title="消息处理流程"></a>消息处理流程</h3><p>Telegram 的消息处理采用<strong>工厂模式 + 依赖注入</strong>：</p>
+<div class="mermaid">flowchart LR
+  A[&quot;收到 Telegram Update&quot;] --&gt; B[&quot;聚合 Media Group&quot;]
+  B --&gt; C[&quot;构建统一 MsgContext&quot;]
+  C --&gt; D[&quot;Agent 处理&quot;]
+  D --&gt; E[&quot;响应发回通道&quot;]</div>
+
+<p>初始化时通过工厂函数注入所有依赖（config、logger、stream mode 等），返回一个纯函数处理器。这种模式方便测试——可以 mock 任何依赖而不需要启动真正的 Telegram bot。</p>
+<blockquote>
+<p><strong>Media Group 聚合</strong>：Telegram 会把一次发送的多张图片拆成多个独立 update，处理器需要先将它们聚合回一条消息。</p>
+</blockquote>
+<hr>
+<h2 id="6-扩展通道剖析：以-Matrix-为例"><a href="#6-扩展通道剖析：以-Matrix-为例" class="headerlink" title="6. 扩展通道剖析：以 Matrix 为例"></a>6. 扩展通道剖析：以 Matrix 为例</h2><p>Matrix 通道展示了 <code>ChannelPlugin</code> 接口的完整实现模式。以下是核心结构（省略具体实现）：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="attr">matrixPlugin</span>: <span class="title class_">ChannelPlugin</span> = &#123;</span><br><span class="line">  <span class="attr">id</span>: <span class="string">&quot;matrix&quot;</span>,</span><br><span class="line">  <span class="attr">meta</span>: &#123;</span><br><span class="line">    <span class="comment">/* 名称、图标、文档链接等 */</span></span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="attr">capabilities</span>: &#123;</span><br><span class="line">    <span class="attr">chatTypes</span>: [<span class="string">&quot;direct&quot;</span>, <span class="string">&quot;group&quot;</span>, <span class="string">&quot;thread&quot;</span>],</span><br><span class="line">    <span class="attr">polls</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="attr">reactions</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="attr">threads</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="attr">media</span>: <span class="literal">true</span>,</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 热重载：修改 channels.matrix.* 配置时无需重启</span></span><br><span class="line">  <span class="attr">reload</span>: &#123; <span class="attr">configPrefixes</span>: [<span class="string">&quot;channels.matrix&quot;</span>] &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 配对：陌生人需审批后才能对话</span></span><br><span class="line">  <span class="attr">pairing</span>: &#123;</span><br><span class="line">    <span class="attr">normalizeAllowEntry</span>: <span class="function">(<span class="params">entry</span>) =&gt;</span> entry.<span class="title function_">replace</span>(<span class="regexp">/^matrix:/i</span>, <span class="string">&quot;&quot;</span>),</span><br><span class="line">    <span class="attr">notifyApproval</span>: <span class="function">(<span class="params">id</span>) =&gt;</span> <span class="title function_">sendMessage</span>(id, <span class="string">&quot;已批准&quot;</span>),</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 账号配置：列出、解析、描述账号</span></span><br><span class="line">  <span class="attr">config</span>: &#123;</span><br><span class="line">    listAccountIds,</span><br><span class="line">    resolveAccount,</span><br><span class="line">    defaultAccountId,</span><br><span class="line">    <span class="attr">isConfigured</span>: <span class="function">(<span class="params">account</span>) =&gt;</span> account.<span class="property">configured</span>,</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 安全策略：默认 pairing 模式</span></span><br><span class="line">  <span class="attr">security</span>: &#123;</span><br><span class="line">    <span class="attr">resolveDmPolicy</span>: <span class="function">(<span class="params">&#123; account &#125;</span>) =&gt;</span> (&#123;</span><br><span class="line">      <span class="attr">policy</span>: account.<span class="property">config</span>.<span class="property">dm</span>?.<span class="property">policy</span> ?? <span class="string">&quot;pairing&quot;</span>,</span><br><span class="line">      <span class="attr">allowFrom</span>: account.<span class="property">config</span>.<span class="property">dm</span>?.<span class="property">allowFrom</span> ?? [],</span><br><span class="line">    &#125;),</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 线程：将 Matrix 线程 ID 映射到统一 context</span></span><br><span class="line">  <span class="attr">threading</span>: &#123; resolveReplyToMode, buildToolContext &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 消息：判断输入是否为 Matrix ID（如 @user:matrix.org）</span></span><br><span class="line">  <span class="attr">messaging</span>: &#123;</span><br><span class="line">    <span class="attr">targetResolver</span>: &#123;</span><br><span class="line">      <span class="attr">looksLikeId</span>: <span class="function">(<span class="params">raw</span>) =&gt;</span> <span class="regexp">/^(matrix:)?[!#@]/</span>.<span class="title function_">test</span>(raw),</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  <span class="comment">// ... gateway, status, directory 等</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>设计要点：</p>
+<ul>
+<li><strong><code>security</code></strong> 默认 <code>&quot;pairing&quot;</code> 模式，陌生人需先获批准才能对话，比 <code>&quot;open&quot;</code> 更安全</li>
+<li><strong><code>messaging.targetResolver</code></strong> 用正则判断输入是否为 Matrix ID（如 <code>@user:matrix.org</code>）</li>
+<li><strong><code>threading</code></strong> 将 Matrix 线程 ID 映射到统一的 tool context，让 Agent 在正确的线程中回复</li>
+</ul>
+<hr>
+<h2 id="7-消息路由：7-层绑定匹配"><a href="#7-消息路由：7-层绑定匹配" class="headerlink" title="7. 消息路由：7 层绑定匹配"></a>7. 消息路由：7 层绑定匹配</h2><p>当一条消息进来时，OpenClaw 需要决定<strong>交给哪个 Agent 处理</strong>。</p>
+<h3 id="为什么需要分层路由"><a href="#为什么需要分层路由" class="headerlink" title="为什么需要分层路由"></a>为什么需要分层路由</h3><p>假设你有多个 Agent：support-agent 负责客服、admin-agent 负责管理、general-agent 做通用聊天。你在配置里写了一堆规则（bindings），每条规则说”满足条件 X 的消息交给 Agent Y”。</p>
+<p>问题是：<strong>一条消息可能同时匹配多条规则</strong>。Discord 的 #support 频道里的消息，既匹配”这个频道”的规则，也匹配”这个 Guild”的规则，还匹配”所有 Discord”的规则。谁优先？</p>
+<p>OpenClaw 用 <strong>7 层优先级</strong>解决这个冲突——从最精确到最宽泛，<strong>第一个匹配的就生效</strong>：</p>
+<div class="mermaid">flowchart TD
+  MSG[&quot;入站消息&quot;] --&gt; N[&quot;归一化\nchannel → 小写\naccountId → 默认 default\npeer.kind → dm 转 direct&quot;]
+  N --&gt; R{&quot;按优先级逐层匹配&quot;}
+  R --&gt;|&quot;① peer&quot;| P1[&quot;精确匹配对话对象\n例：#support 频道&quot;]
+  R --&gt;|&quot;② peer.parent&quot;| P2[&quot;父级匹配\n例：#support 下的线程&quot;]
+  R --&gt;|&quot;③ guild+roles&quot;| P3[&quot;Guild + 角色\n例：Guild-X 的 admin&quot;]
+  R --&gt;|&quot;④ guild&quot;| P4[&quot;Guild 匹配\n例：Guild-X 所有消息&quot;]
+  R --&gt;|&quot;⑤ team&quot;| P5[&quot;团队匹配\n例：Slack workspace&quot;]
+  R --&gt;|&quot;⑥ account&quot;| P6[&quot;Bot 账号匹配\n例：bot-1 的所有消息&quot;]
+  R --&gt;|&quot;⑦ channel&quot;| P7[&quot;通道匹配（最宽泛）\n例：所有 Discord 消息&quot;]
+  R --&gt;|&quot;ⓧ 都没匹配&quot;| P8[&quot;兜底 → 默认 Agent&quot;]
+
+  P1 &amp; P2 &amp; P3 &amp; P4 &amp; P5 &amp; P6 &amp; P7 &amp; P8 --&gt; KEY[&quot;构建 sessionKey\n决定会话隔离粒度&quot;]
+  KEY --&gt; RES[&quot;返回 { agentId, sessionKey, matchedBy }&quot;]</div>
+
+<h3 id="具体例子：4-条消息的路由过程"><a href="#具体例子：4-条消息的路由过程" class="headerlink" title="具体例子：4 条消息的路由过程"></a>具体例子：4 条消息的路由过程</h3><p>假设你的 Discord 服务器配了这些规则：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">bindings:</span></span><br><span class="line">  <span class="comment"># 规则 A: #support 频道 → support-agent</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">agentId:</span> <span class="string">support-agent</span></span><br><span class="line">    <span class="attr">match:</span> &#123; <span class="attr">channel:</span> <span class="string">discord</span>, <span class="attr">peer:</span> &#123; <span class="attr">kind:</span> <span class="string">channel</span>, <span class="attr">id:</span> <span class="string">&quot;C-SUPPORT&quot;</span> &#125; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 规则 B: Guild-X 中有 admin 角色的用户 → admin-agent</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">agentId:</span> <span class="string">admin-agent</span></span><br><span class="line">    <span class="attr">match:</span> &#123; <span class="attr">channel:</span> <span class="string">discord</span>, <span class="attr">guildId:</span> <span class="string">&quot;Guild-X&quot;</span>, <span class="attr">roles:</span> [<span class="string">&quot;admin-role&quot;</span>] &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 规则 C: Guild-X 所有消息 → community-agent</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">agentId:</span> <span class="string">community-agent</span></span><br><span class="line">    <span class="attr">match:</span> &#123; <span class="attr">channel:</span> <span class="string">discord</span>, <span class="attr">guildId:</span> <span class="string">&quot;Guild-X&quot;</span> &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 规则 D: 所有 Discord 消息（通配 accountId: &quot;*&quot;）→ general-agent</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">agentId:</span> <span class="string">general-agent</span></span><br><span class="line">    <span class="attr">match:</span> &#123; <span class="attr">channel:</span> <span class="string">discord</span>, <span class="attr">accountId:</span> <span class="string">&quot;*&quot;</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在来了 4 条不同的消息，看它们各自怎么被路由：</p>
+<div class="mermaid">flowchart TD
+  subgraph msg1[&quot;消息 1: #support 频道里有人提问&quot;]
+    direction LR
+    M1[&quot;peer&#x3D;C-SUPPORT\nguild&#x3D;Guild-X\nroles&#x3D;无&quot;]
+    M1 --&gt;|&quot;① peer 匹配规则 A ✓&quot;| R1[&quot;→ support-agent&quot;]
+  end
+
+  subgraph msg2[&quot;消息 2: admin 在 #general 发消息&quot;]
+    direction LR
+    M2[&quot;peer&#x3D;C-GENERAL\nguild&#x3D;Guild-X\nroles&#x3D;admin-role&quot;]
+    M2 --&gt;|&quot;① peer 没匹配\n② parent 没有\n③ guild+roles 匹配规则 B ✓&quot;| R2[&quot;→ admin-agent&quot;]
+  end</div>
+
+<div class="mermaid">flowchart TD
+  subgraph msg3[&quot;消息 3: 普通用户在 #general 发消息&quot;]
+    direction LR
+    M3[&quot;peer&#x3D;C-GENERAL\nguild&#x3D;Guild-X\nroles&#x3D;无&quot;]
+    M3 --&gt;|&quot;①②③ 都没匹配\n④ guild 匹配规则 C ✓&quot;| R3[&quot;→ community-agent&quot;]
+  end
+
+  subgraph msg4[&quot;消息 4: 另一个 Guild 的消息&quot;]
+    direction LR
+    M4[&quot;peer&#x3D;C-OTHER\nguild&#x3D;Guild-Y\nroles&#x3D;无&quot;]
+    M4 --&gt;|&quot;①②③④⑤⑥ 都没匹配\n⑦ channel 匹配规则 D ✓&quot;| R4[&quot;→ general-agent&quot;]
+  end</div>
+
+<p><strong>关键细节</strong>：规则 A 同时指定了 peer 和隐含的 channel，但它只在 Tier 1（peer）尝试匹配。如果 peer 不匹配，它<strong>不会”降级”到更宽泛的层级去碰运气</strong>——每条规则只在它最精确的层级参与匹配。</p>
+<h3 id="线程继承（Tier-2-peer-parent）"><a href="#线程继承（Tier-2-peer-parent）" class="headerlink" title="线程继承（Tier 2: peer.parent）"></a>线程继承（Tier 2: peer.parent）</h3><p>Discord 的线程（Thread）带来一个有趣问题：</p>
+<div class="mermaid">flowchart LR
+  subgraph 没有Tier2[&quot;没有 Tier 2 的情况&quot;]
+    direction TB
+    CH1[&quot;#support\nid&#x3D;C-SUPPORT&quot;] --&gt;|&quot;用户创建线程&quot;| TH1[&quot;线程: 讨论 Bug-123\nid&#x3D;thread-456&quot;]
+    TH1 --&gt;|&quot;① peer: thread-456 ✗\n③④⑤⑥⑦ 逐层匹配...&quot;| WRONG[&quot;可能落到 community-agent\n而不是 support-agent&quot;]
+  end
+
+  subgraph 有Tier2[&quot;有 Tier 2 的情况&quot;]
+    direction TB
+    CH2[&quot;#support\nid&#x3D;C-SUPPORT&quot;] --&gt;|&quot;用户创建线程&quot;| TH2[&quot;线程: 讨论 Bug-123\nid&#x3D;thread-456\nparentPeer&#x3D;C-SUPPORT&quot;]
+    TH2 --&gt;|&quot;① peer: thread-456 ✗\n② parent: C-SUPPORT ✓&quot;| RIGHT[&quot;→ support-agent ✓\n线程继承父频道的 Agent&quot;]
+  end
+
+  没有Tier2 ~~~ 有Tier2</div>
+
+<p>线程的 <code>parentPeer</code> 指向它的父频道。Tier 2 用父频道的 ID 去匹配规则，这样线程里的消息也交给正确的 Agent。注意，<strong>session key 仍然用线程自己的 ID</strong>，所以每个线程有独立的会话历史——只是 Agent 选择继承自父频道。</p>
+<h3 id="角色匹配（Tier-3-guild-roles）"><a href="#角色匹配（Tier-3-guild-roles）" class="headerlink" title="角色匹配（Tier 3: guild+roles）"></a>角色匹配（Tier 3: guild+roles）</h3><p>角色匹配采用 <strong>OR 逻辑</strong>——只要用户拥有规则中列出的任意一个角色就算匹配：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">规则：roles: [&quot;moderator&quot;, &quot;admin&quot;]</span><br><span class="line"></span><br><span class="line">用户角色: [&quot;member&quot;, &quot;admin&quot;]  →  admin ∈ roles  →  匹配 ✓</span><br><span class="line">用户角色: [&quot;member&quot;]            →  无交集          →  不匹配 ✗</span><br></pre></td></tr></table></figure>
+
+<h3 id="Session-Key：路由之后的会话隔离"><a href="#Session-Key：路由之后的会话隔离" class="headerlink" title="Session Key：路由之后的会话隔离"></a>Session Key：路由之后的会话隔离</h3><p>路由决定了”消息交给谁”，而 <strong>session key</strong> 决定了”在哪个对话里”。</p>
+<p><strong>群聊&#x2F;频道</strong>的 session key 是固定的——每个频道一个独立会话：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">agent:support-agent:discord:channel:C-SUPPORT</span><br></pre></td></tr></table></figure>
+
+<p><strong>私聊（DM）</strong> 则通过 <code>dmScope</code> 配置提供 4 种隔离粒度：</p>
+<div class="mermaid">flowchart TD
+  DM[&quot;收到私聊消息\nagent&#x3D;main, channel&#x3D;discord, peer&#x3D;alice&quot;] --&gt; SCOPE{&quot;dmScope 配置?&quot;}
+
+  SCOPE --&gt;|&quot;main（默认）&quot;| S1[&quot;session key: agent:main:main\n所有私聊共享一个会话\nAlice 和 Bob 看到相同上下文&quot;]
+  SCOPE --&gt;|&quot;per-peer&quot;| S2[&quot;session key: agent:main:direct:alice\n每人独立会话\n但跨平台的 alice 共享&quot;]
+  SCOPE --&gt;|&quot;per-channel-peer&quot;| S3[&quot;session key: agent:main:discord:direct:alice\n每个平台每人独立\nTelegram 和 Discord 的 alice 分开&quot;]
+  SCOPE --&gt;|&quot;per-account-channel-peer&quot;| S4[&quot;session key: agent:main:discord:bot1:direct:alice\n最细粒度\n每个 bot 账号 × 平台 × 人&quot;]</div>
+
+<p>大多数多用户场景用 <code>per-channel-peer</code>（每个平台每个用户一个独立会话）。默认的 <code>main</code> 适合个人用——只有你一个人私聊 bot，所有消息在同一个上下文里。</p>
+<h3 id="跨平台身份合并（Identity-Links）"><a href="#跨平台身份合并（Identity-Links）" class="headerlink" title="跨平台身份合并（Identity Links）"></a>跨平台身份合并（Identity Links）</h3><p>如果 Alice 同时在 Telegram（ID: 111111）和 Discord（ID: 222222）私聊 bot，默认是两个独立会话。通过 <code>identityLinks</code> 可以合并：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">session:</span></span><br><span class="line">  <span class="attr">dmScope:</span> <span class="string">per-channel-peer</span></span><br><span class="line">  <span class="attr">identityLinks:</span></span><br><span class="line">    <span class="attr">alice:</span> [<span class="string">&quot;telegram:111111&quot;</span>, <span class="string">&quot;discord:222222&quot;</span>]</span><br></pre></td></tr></table></figure>
+
+<div class="mermaid">flowchart LR
+  subgraph before[&quot;没有 Identity Links&quot;]
+    TG1[&quot;Telegram:111111&quot;] --&gt; SK1[&quot;session key:\nagent:main:telegram:direct:111111&quot;]
+    DC1[&quot;Discord:222222&quot;] --&gt; SK2[&quot;session key:\nagent:main:discord:direct:222222&quot;]
+    SK1 -.- NOTE1[&quot;两个独立会话\nAlice 换平台后丢失上下文&quot;]
+  end
+
+  subgraph after[&quot;有 Identity Links&quot;]
+    TG2[&quot;Telegram:111111&quot;] --&gt; LINK[&quot;查 identityLinks\n111111 → alice&quot;]
+    DC2[&quot;Discord:222222&quot;] --&gt; LINK
+    LINK --&gt; SK3[&quot;peerId 替换为 alice\n两个平台共享会话上下文&quot;]
+  end</div>
+
+<p>Alice 在 Telegram 聊到一半切到 Discord 继续，bot 仍然记得之前的对话。</p>
+<h3 id="防回环：Bot-不会回复自己"><a href="#防回环：Bot-不会回复自己" class="headerlink" title="防回环：Bot 不会回复自己"></a>防回环：Bot 不会回复自己</h3><p>在群聊场景中，Agent 回复的消息会被平台重新推送给 bot 自身。如果不处理，就会出现 bot 回复自己、自己再回复、无限循环的情况。OpenClaw 在<strong>消息进入路由之前</strong>就做了过滤，确保 bot 的回复永远不会进入 7 层匹配：</p>
+<div class="mermaid">flowchart LR
+  U[&quot;用户发消息&quot;] --&gt; AGENT[&quot;Agent 处理并回复&quot;]
+  AGENT --&gt; CH[&quot;回复发到频道&quot;]
+  CH --&gt; PUSH[&quot;平台推送这条回复\n给 bot 自身&quot;]
+  PUSH --&gt; FILTER{&quot;是自己发的消息?&quot;}
+  FILTER --&gt;|&quot;是&quot;| DROP[&quot;丢弃，不进入路由&quot;]
+  FILTER --&gt;|&quot;否&quot;| ROUTE[&quot;进入 7 层路由&quot;]</div>
+
+<p>各平台的过滤机制不同，但效果一致：</p>
+<table>
+<thead>
+<tr>
+<th>平台</th>
+<th>自身消息过滤</th>
+<th>其他 Bot 消息</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Telegram</td>
+<td>平台保证：Bot API 根本不推送 bot 自己的消息</td>
+<td>群聊中平台也不推送其他 bot 的消息</td>
+</tr>
+<tr>
+<td>Discord</td>
+<td>检查 <code>author.id === botUserId</code> → 丢弃</td>
+<td>默认丢弃（<code>allowBots</code> 可开启）</td>
+</tr>
+<tr>
+<td>WhatsApp</td>
+<td>检查 <code>fromMe</code> 标记 → 丢弃</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Slack</td>
+<td>检查 <code>bot_id</code> + <code>user === botUserId</code> → 丢弃</td>
+<td>默认丢弃（<code>allowBots</code> 可开启）</td>
+</tr>
+<tr>
+<td>Signal</td>
+<td>对比发送者手机号&#x2F;UUID → 丢弃</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p>Discord 和 Slack 提供了 <code>allowBots</code> 配置——如果你<strong>故意</strong>想让 Agent 响应其他 bot 的消息（比如 bot 之间协作），可以打开这个开关。但 bot 回复自己是永远屏蔽的，不可配置。</p>
+<hr>
+<h2 id="8-会话记录与消息归一化"><a href="#8-会话记录与消息归一化" class="headerlink" title="8. 会话记录与消息归一化"></a>8. 会话记录与消息归一化</h2><p>路由完成后，消息需要被记录到 session store。核心流程分两步：</p>
+<div class="mermaid">flowchart LR
+  MSG[&quot;入站消息&quot;] --&gt; A[&quot;① 记录 session 元数据\n（发送者、通道、时间）&quot;]
+  MSG --&gt; B[&quot;② 更新 last route\n（最后消息的投递上下文）&quot;]
+  A -.- NOTE1[&quot;异步执行，不阻塞消息处理&quot;]
+  B --&gt; C[&quot;Agent 主动发消息时\n知道该通过哪个通道投递&quot;]</div>
+
+<p><strong>last route</strong> 记录了”最后一次收到消息的通道和目标”。当 Agent 需要主动发送消息时，就知道该通过哪个通道投递。</p>
+<blockquote>
+<p><strong>归一化细节</strong>：session key 统一做 <code>trim().toLowerCase()</code> 处理，确保 <code>Telegram:123</code> 和 <code>telegram:123</code> 指向同一个 session。</p>
+</blockquote>
+<hr>
+<h2 id="9-访问控制"><a href="#9-访问控制" class="headerlink" title="9. 访问控制"></a>9. 访问控制</h2><p>安全是多通道架构不可忽略的一环。访问控制的核心判断逻辑：</p>
+<div class="mermaid">flowchart LR
+  REQ[&quot;收到消息&quot;] --&gt; CHECK{&quot;白名单\n是否为空?&quot;}
+  CHECK --&gt;|&quot;空&quot;| POLICY[&quot;由 DM 策略决定&quot;]
+  CHECK --&gt;|&quot;有条目&quot;| WILD{&quot;包含\n通配符 * ?&quot;}
+  WILD --&gt;|&quot;是&quot;| ALLOW[&quot;放行&quot;]
+  WILD --&gt;|&quot;否&quot;| MATCH{&quot;senderId\n在列表中?&quot;}
+  MATCH --&gt;|&quot;是&quot;| ALLOW
+  MATCH --&gt;|&quot;否&quot;| DENY[&quot;拒绝&quot;]</div>
+
+<p>白名单来源有两个：<strong>配置文件</strong>中明确写的 <code>allowFrom</code> 和 <strong>pairing store</strong> 中已配对的用户。两者合并后作为最终白名单。</p>
+<p>DM 策略有三种模式：</p>
+<ul>
+<li><strong><code>&quot;open&quot;</code></strong> — 任何人都可以发消息</li>
+<li><strong><code>&quot;pairing&quot;</code></strong> — 陌生人需要配对审批，已配对用户自动放行（合并 config + pairing store）</li>
+<li><strong><code>&quot;allowlist&quot;</code></strong> — 只看配置中明确列出的用户（不合并 pairing store）</li>
+</ul>
+<hr>
+<h2 id="10-WhatsApp-Web-的特殊实现"><a href="#10-WhatsApp-Web-的特殊实现" class="headerlink" title="10. WhatsApp Web 的特殊实现"></a>10. WhatsApp Web 的特殊实现</h2><p>WhatsApp 没有官方 Bot API，OpenClaw 通过 Baileys 库（<code>@whiskeysockets/baileys</code>）实现 WebSocket 逆向接入。</p>
+<h3 id="QR-码配对"><a href="#QR-码配对" class="headerlink" title="QR 码配对"></a>QR 码配对</h3><div class="mermaid">sequenceDiagram
+  participant User as 用户手机
+  participant OC as OpenClaw
+  participant WA as WhatsApp 服务器
+
+  OC-&gt;&gt;WA: 创建 WebSocket 连接
+  WA--&gt;&gt;OC: 返回 QR 码数据
+  OC-&gt;&gt;OC: 生成 QR 码（有效期 3 分钟）
+  User-&gt;&gt;OC: 扫描 QR 码
+  OC-&gt;&gt;WA: 完成配对
+  WA--&gt;&gt;OC: 连接成功
+  Note over OC,WA: 若收到 515 错误码，自动重连一次</div>
+
+<p>关键设计：</p>
+<ul>
+<li><strong>QR 有效期 3 分钟</strong>（WhatsApp 限制），超时后需重新生成</li>
+<li><strong>515 错误处理</strong>：WhatsApp 有时在配对成功后要求重连，系统会自动重试一次</li>
+<li><strong>并发安全</strong>：用 Map 管理多个账号的登录状态，通过 login ID 防止过期回调覆盖新连接</li>
+</ul>
+<h3 id="消息监听与防碎片化"><a href="#消息监听与防碎片化" class="headerlink" title="消息监听与防碎片化"></a>消息监听与防碎片化</h3><p>WhatsApp 用户经常连发多条消息，每条都触发 AI 回复会导致碎片化响应。系统通过 <strong>Debouncer</strong> 解决：</p>
+<div class="mermaid">flowchart LR
+  subgraph debounce[&quot;debounceMs 时间窗口内&quot;]
+    M1[&quot;你好&quot;] --&gt; AGG[&quot;聚合&quot;]
+    M2[&quot;帮我&quot;] --&gt; AGG
+    M3[&quot;查下天气&quot;] --&gt; AGG
+  end
+  AGG --&gt; MERGED[&quot;合并后的消息:\n你好\n帮我\n查下天气&quot;]
+  MERGED --&gt; AGENT[&quot;Agent 处理&quot;]</div>
+
+<p>聚合策略：</p>
+<ul>
+<li><strong>聚合键</strong> &#x3D; <code>accountId + conversationKey + senderKey</code>（同一发送者、同一对话）</li>
+<li>群聊中按发送者独立聚合，不会混淆不同人的消息</li>
+<li>单条消息直接透传，多条消息拼接 body 并合并 <code>@提及</code> 列表</li>
+<li>这样 AI 能看到完整的上下文，而不是一条条碎片</li>
+</ul>
+<hr>
+<p>以上覆盖了 ChannelPlugin 接口、7 层绑定路由、内置与扩展通道、访问控制以及 WhatsApp 的 QR 配对和消息合并实现。</p>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author_group"><a class="post-copyright__author_img" href="/about/"><img class="post-copyright__author_img_front" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"></a><div class="post-copyright__author_name">HDi - 随便记</div><div class="post-copyright__author_desc"></div></div><div class="post-tools" id="post-tools"><div class="post-tools-left"><div id="quit-box" onclick="RemoveRewardMask()"></div><div class="post-reward"><div class="reward-button" title="赞赏作者" onclick="AddRewardMask()"><i class="solitude fa-solid fa-heart"></i>赞赏作者</div><div class="reward-main"><ul class="reward-all"><span class="reward-title">感谢你的欣赏！</span><ul class="reward-group"><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/wechatpay.JPG" alt="wechat" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">wechat</div></li><li class="reward-item"><a href="/"><img class="post-qr-code-img nolazyload" src="https://file-1305436646.file.myqcloud.com/blog-icon/alipay.JPG" alt="alipay" style="border-color: var(--efu-black)"></a><div class="post-qr-code-desc">alipay</div></li></ul><a class="reward-main-btn" href="/about/"><div class="reward-text">赞赏名单</div><div class="reward-dec">因为你的支持，我感受到写文章的价值。</div></a></ul></div></div><script>function RemoveRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "none";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "none";
+    }
+}
+
+function AddRewardMask() {
+    let rewardMainElements = document.querySelectorAll(".reward-main");
+    let quitBoxElement = document.querySelector("#quit-box");
+
+    rewardMainElements.forEach(element => {
+        element.style.display = "flex";
+    });
+
+    if (quitBoxElement) {
+        quitBoxElement.style.display = "flex";
+    }
+}</script></div></div><div class="social-share"><a class="social-share-ico icon-qq" target="_blank" rel="noopener" href="https://connect.qq.com/widget/shareqq/index.html?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F11%2F2026-03-11-%25E5%25A4%259A%25E9%2580%259A%25E9%2581%2593%25E6%259E%25B6%25E6%259E%2584%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9A%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84%E2%80%94%E2%80%94%E4%BB%8E%20WhatsApp%20%E5%88%B0%20Discord%20%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1&amp;desc=undefined&amp;summary=undefined&amp;site=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9A%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84%E2%80%94%E2%80%94%E4%BB%8E%20WhatsApp%20%E5%88%B0%20Discord%20%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1&amp;pics=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-11.webp" title="分享到QQ"><i class="solitude fab fa-qq"></i></a><a class="social-share-ico icon-weibo" target="_blank" rel="noopener" href="http://service.weibo.com/share/share.php?url=http%3A%2F%2Fexample.com%2F2026%2F03%2F11%2F2026-03-11-%25E5%25A4%259A%25E9%2580%259A%25E9%2581%2593%25E6%259E%25B6%25E6%259E%2584%2F&amp;title=OpenClaw%20%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9A%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84%E2%80%94%E2%80%94%E4%BB%8E%20WhatsApp%20%E5%88%B0%20Discord%20%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1&amp;pic=https%3A%2F%2Ffile-1305436646.cos.ap-nanjing.myqcloud.com%2Fblog%2Fbanner%2F2026-03-11.webp" title="分享到微博"><i class="solitude fab fa-weibo"></i></a><div class="social-share-ico icon-link" onclick="utils.copy(&quot;http://example.com/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/&quot;)" title="复制文章链接"><i class="solitude fas fa-link"></i></div><div class="social-share-ico icon-qrcode" title="使用手机扫码阅读这篇文章"><i class="solitude fas fa-qrcode"></i><div class="share-main"><div class="share-main-all"><div id="qrcode"></div><div class="reward-dec">使用手机扫码阅读这篇文章</div></div></div><script pjax>typeof QRCode === 'function' && new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/');
+window.addEventListener('DOMContentLoaded', () => {
+    new QRCode(document.getElementById("qrcode"), 'http://example.com/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/');
+});
+</script></div></div><div class="post-copyright__notice"><span class="post-copyright-info">本文是原创文章，采用<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">CC BY-NC-SA 4.0</a>协议，完整转载请注明来自<a href="/">HDi - 随便记</a></span></div></div><div class="post-tools-right"><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>大模型<span class="tagsPageCount">13</span></span></a><a class="post-meta__tags" href="/tags/OpenClaw/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>OpenClaw<span class="tagsPageCount">8</span></span></a><a class="post-meta__tags" href="/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><span class="tags-punctuation"><i class="solitude fa-solid fa-hashtag"></i>源码解析<span class="tagsPageCount">8</span></span></a></div></div></div><nav class="needEndHide pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</div></div></a></div><div class="next-post pull-right"><a href="/2026/03/10/2026-03-10-Gateway/"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">OpenClaw 设计解析（三）：Gateway 核心——WebSocket 服务与会话管理</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="solitude fa-solid fa-star"></i><span>喜欢这篇的人也看了</span><div class="relatedPosts-link"><a onclick="event.preventDefault(); toRandomPost();" href="javascript:void(0);" rel="external nofollow" data-pjax-state="">随便逛逛</a></div></div><div class="relatedPosts-list"><div><a href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（八）：安全模型</div></div></a></div><div><a href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img class="cover" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp" alt="cover"><div class="content is-center"><div class="title">OpenClaw 设计解析（七）：插件系统</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><div class="author-info__top-group"><div class="author-info__sayhi" id="author-info__sayhi" onclick="sco.changeSayHelloText()">sayhello.morning</div></div></div><div class="avatar-img-group"><img class="avatar-img" alt="头像" src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png"><div class="avatar-sticker"><img class="avatar-sticker-img" src="https://file-1305436646.file.myqcloud.com/blog-icon/EMOJI-44.png" alt="心情贴纸"></div></div><div class="author-info__description_group"><div class="author-info__description">分享自己对技术成长的<b>总结梳理</b>，对新事物或者爱好的<b>探索历程</b>。</div><div class="author-info__description2">相信你可以在这里找到对你有用的知识和教程。</div></div><div class="author-info__bottom-group"><a class="author-info__bottom-group-left" href="/about/"><div class="author-info__name">HDi</div><div class="author-info__desc"></div></a><div class="card-info-social-icons is-center"><a class="social-icon" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a></div></div></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="solitude fa-solid fa-bars"></i><span>文章目录</span></div><div class="toc-content" id="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#OpenClaw-%E8%AE%BE%E8%AE%A1%E8%A7%A3%E6%9E%90%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9A%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84%E2%80%94%E2%80%94%E4%BB%8E-WhatsApp-%E5%88%B0-Discord-%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1"><span class="toc-text">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%A4%9A%E9%80%9A%E9%81%93%E6%98%AF%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1"><span class="toc-text">1. 为什么多通道是核心设计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Channel-%E6%8A%BD%E8%B1%A1%E5%B1%82"><span class="toc-text">2. Channel 抽象层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E9%81%93%E6%B3%A8%E5%86%8C%E8%A1%A8"><span class="toc-text">通道注册表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E9%81%93-ID-%E5%BD%92%E4%B8%80%E5%8C%96"><span class="toc-text">通道 ID 归一化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-ChannelPlugin-%E6%8E%A5%E5%8F%A3%EF%BC%9A30-%E4%B8%AA-adapter-%E7%9A%84%E5%8D%8F%E8%AE%AE"><span class="toc-text">3. ChannelPlugin 接口：30+ 个 adapter 的协议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%86%85%E7%BD%AE%E9%80%9A%E9%81%93-vs-%E6%89%A9%E5%B1%95%E9%80%9A%E9%81%93"><span class="toc-text">4. 内置通道 vs 扩展通道</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%80%9A%E9%81%93%E5%AE%9E%E7%8E%B0%E5%89%96%E6%9E%90%EF%BC%9A%E4%BB%A5-Telegram-%E4%B8%BA%E4%BE%8B"><span class="toc-text">5. 通道实现剖析：以 Telegram 为例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Bot-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-text">Bot 初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B6%88%E6%81%AF%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-text">消息处理流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%89%A9%E5%B1%95%E9%80%9A%E9%81%93%E5%89%96%E6%9E%90%EF%BC%9A%E4%BB%A5-Matrix-%E4%B8%BA%E4%BE%8B"><span class="toc-text">6. 扩展通道剖析：以 Matrix 为例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E6%B6%88%E6%81%AF%E8%B7%AF%E7%94%B1%EF%BC%9A7-%E5%B1%82%E7%BB%91%E5%AE%9A%E5%8C%B9%E9%85%8D"><span class="toc-text">7. 消息路由：7 层绑定匹配</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%88%86%E5%B1%82%E8%B7%AF%E7%94%B1"><span class="toc-text">为什么需要分层路由</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B7%E4%BD%93%E4%BE%8B%E5%AD%90%EF%BC%9A4-%E6%9D%A1%E6%B6%88%E6%81%AF%E7%9A%84%E8%B7%AF%E7%94%B1%E8%BF%87%E7%A8%8B"><span class="toc-text">具体例子：4 条消息的路由过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E7%BB%A7%E6%89%BF%EF%BC%88Tier-2-peer-parent%EF%BC%89"><span class="toc-text">线程继承（Tier 2: peer.parent）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%92%E8%89%B2%E5%8C%B9%E9%85%8D%EF%BC%88Tier-3-guild-roles%EF%BC%89"><span class="toc-text">角色匹配（Tier 3: guild+roles）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Session-Key%EF%BC%9A%E8%B7%AF%E7%94%B1%E4%B9%8B%E5%90%8E%E7%9A%84%E4%BC%9A%E8%AF%9D%E9%9A%94%E7%A6%BB"><span class="toc-text">Session Key：路由之后的会话隔离</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%A8%E5%B9%B3%E5%8F%B0%E8%BA%AB%E4%BB%BD%E5%90%88%E5%B9%B6%EF%BC%88Identity-Links%EF%BC%89"><span class="toc-text">跨平台身份合并（Identity Links）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B2%E5%9B%9E%E7%8E%AF%EF%BC%9ABot-%E4%B8%8D%E4%BC%9A%E5%9B%9E%E5%A4%8D%E8%87%AA%E5%B7%B1"><span class="toc-text">防回环：Bot 不会回复自己</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E4%BC%9A%E8%AF%9D%E8%AE%B0%E5%BD%95%E4%B8%8E%E6%B6%88%E6%81%AF%E5%BD%92%E4%B8%80%E5%8C%96"><span class="toc-text">8. 会话记录与消息归一化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6"><span class="toc-text">9. 访问控制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-WhatsApp-Web-%E7%9A%84%E7%89%B9%E6%AE%8A%E5%AE%9E%E7%8E%B0"><span class="toc-text">10. WhatsApp Web 的特殊实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#QR-%E7%A0%81%E9%85%8D%E5%AF%B9"><span class="toc-text">QR 码配对</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B6%88%E6%81%AF%E7%9B%91%E5%90%AC%E4%B8%8E%E9%98%B2%E7%A2%8E%E7%89%87%E5%8C%96"><span class="toc-text">消息监听与防碎片化</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="solitude fa-solid fa-map"></i><span>最近发布</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型"><img alt="OpenClaw 设计解析（八）：安全模型" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-15.webp"></a><div class="content"><span class="title" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/" title="OpenClaw 设计解析（八）：安全模型">OpenClaw 设计解析（八）：安全模型</span><span class="article-recent_post_categories" href="/2026/03/15/2026-03-15-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统"><img alt="OpenClaw 设计解析（七）：插件系统" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-14.webp"></a><div class="content"><span class="title" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/" title="OpenClaw 设计解析（七）：插件系统">OpenClaw 设计解析（七）：插件系统</span><span class="article-recent_post_categories" href="/2026/03/14/2026-03-14-%E6%8F%92%E4%BB%B6%E7%B3%BB%E7%BB%9F/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆"><img alt="OpenClaw 设计解析（六）：上下文记忆" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-13.webp"></a><div class="content"><span class="title" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/" title="OpenClaw 设计解析（六）：上下文记忆">OpenClaw 设计解析（六）：上下文记忆</span><span class="article-recent_post_categories" href="/2026/03/13/2026-03-13-%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%B0%E5%BF%86/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行"><img alt="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-12.webp"></a><div class="content"><span class="title" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/" title="OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行">OpenClaw 设计解析（五）：Agent 运行时——LLM 编排与工具执行</span><span class="article-recent_post_categories" href="/2026/03/12/2026-03-12-Agent%E8%BF%90%E8%A1%8C%E6%97%B6/">大模型</span></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象"><img alt="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象" src="https://file-1305436646.cos.ap-nanjing.myqcloud.com/blog/banner/2026-03-11.webp"></a><div class="content"><span class="title" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/" title="OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象">OpenClaw 设计解析（四）：多通道架构——从 WhatsApp 到 Discord 的统一抽象</span><span class="article-recent_post_categories" href="/2026/03/11/2026-03-11-%E5%A4%9A%E9%80%9A%E9%81%93%E6%9E%B6%E6%9E%84/">大模型</span></div></div></div></div></div></div></main><footer id="footer"><div id="st-footer-bar"><div class="footer-logo"><span>HDi</span></div><div class="footer-bar-description">Articles from HDi.</div><a class="footer-bar-link" href="/about/">Learn more</a></div><div id="footer_deal"><a class="deal_link" target="_blank" rel="noopener" href="https://github.com/Qxiaoqi" title="Github"><i class="solitude  fab fa-github"></i></a><div class="nolazyload footer_mini_logo" id="footer_mini_logo" title="返回顶部" onclick="sco.toTop()"><img src="https://file-1305436646.file.myqcloud.com/blog/avatar/di-avatar.png" alt="返回顶部"></div><a class="deal_link" target="_blank" rel="noopener" href="https://www.xiaohongshu.com/user/profile/5ffb06bf0000000001003e37" title="Xiaohongshu"><i class="solitude  fa fa-book"></i></a></div><div id="st-footer"></div><div id="footer-bar"><div class="footer-bar-links"><div class="footer-bar-left"><div class="copyright">© 2024 - 2026 By&nbsp;<a class="footer-bar-link" href="/">HDi</a></div></div><div class="footer-bar-right"><a class="footer-bar-link" target="_blank" rel="noopener" href="https://github.com/everfu/hexo-theme-solitude" alt="主题">主题</a></div></div></div></footer></div><!-- right_menu--><div id="rightMenu"><div class="rightMenu-group rightMenu-small"><div class="rightMenu-item" id="menu-backward"><i class="solitude fa-solid fa-arrow-left"></i></div><div class="rightMenu-item" id="menu-forward"><i class="solitude fa-solid fa-arrow-right"></i></div><div class="rightMenu-item" id="menu-refresh"><i class="solitude fa-solid fa-arrow-rotate-right"></i></div><div class="rightMenu-item" id="menu-top"><i class="solitude fa-solid fa-arrow-up"></i></div></div><div class="rightMenu-group rightMenu-line rightMenuPlugin"><div class="rightMenu-item" id="menu-copytext"><i class="solitude fa-solid fa-clone"></i><span>复制选中文本</span></div><div class="rightMenu-item" id="menu-pastetext"><i class="solitude fa-solid fa-clipboard"></i><span>粘贴文本</span></div><div class="rightMenu-item" id="menu-newwindow"><i class="solitude fa-regular fa-window-maximize"></i><span>新窗口打开</span></div><div class="rightMenu-item" id="menu-copylink"><i class="solitude fa-solid fa-link"></i><span>复制链接地址</span></div><div class="rightMenu-item" id="menu-copyimg"><i class="solitude fa-solid fa-clone"></i><span>复制此图片</span></div><div class="rightMenu-item" id="menu-downloadimg"><i class="solitude fa-solid fa-cloud-arrow-down"></i><span>下载此图片</span></div><div class="rightMenu-item" id="menu-music-toggle"><i class="solitude fa-solid fa-play"></i><span>播放音乐</span></div><div class="rightMenu-item" id="menu-music-back"><i class="solitude fa-solid fa-backward"></i><span>切换到上一首</span></div><div class="rightMenu-item" id="menu-music-forward"><i class="solitude fa-solid fa-forward"></i><span>切换到下一首</span></div><div class="rightMenu-item" id="menu-music-copyMusicName"><i class="solitude fa-solid fa-clone"></i><span>复制歌名</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-randomPost" onclick="toRandomPost()||rm.hideRightMenu()"><i class="solitude fas fa-tower-broadcast"></i><span>随机文章</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/categories/')||rm.hideRightMenu()"><i class="solitude fas fa-clone"></i><span>全部分类</span></div><div class="rightMenu-item" onclick="pjax.loadUrl('/tags/')||rm.hideRightMenu()"><i class="solitude fas fa-tags"></i><span>全部标签</span></div></div><div class="rightMenu-group rightMenu-line rightMenuOther"><div class="rightMenu-item" id="menu-darkmode" onclick="sco.switchDarkMode()"><i class="solitude fa-solid fa-circle-half-stroke"></i><span class="menu-darkmode-text">深色模式</span></div></div></div><div id="rightmenu-mask"></div><!-- inject body--><div><script src="/js/utils.js?v=2.0.6"></script><script src="/js/main.js?v=2.0.6"></script><script src="/js/third_party/waterfall.min.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pjax/0.2.8/pjax.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script><script src="/js/third_party/universe.min.js?v=2.0.6"></script><script>dark()
+</script><script src="https://cdnjs.cloudflare.com/ajax/libs/node-snackbar/0.1.16/snackbar.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fancyapps-ui/5.0.36/fancybox/fancybox.umd.min.js"></script><script>var meting_api = 'https://meting.qjqq.cn/?server=:server&type=:type&id=:id&auth=:auth&r=:r';</script><script src="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/meting/2.0.1/Meting.min.js"></script><script>const coverColorConfig = {
+    api: 'https://api.qjqq.cn/api/Imgcolor?img=',
+    time: 43200000
+}</script><script src="/js/covercolor/api.js?v=2.0.6"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.2.4/pace.min.js"></script><script src="/js/right_menu.js?v=2.0.6"></script><script>
+  (function() {
+    function getMermaidConfig(mode) {
+      var isDark = mode === 'dark';
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          fontSize: '14px',
+          /* Persona 配色基础变量 — 具体颜色由 CSS 按形状覆盖 */
+          primaryColor:       '#E30B20',
+          primaryBorderColor: '#000000',
+          primaryTextColor:   '#ffffff',
+          secondaryColor:     '#FFD700',
+          secondaryBorderColor:'#000000',
+          secondaryTextColor: '#000000',
+          tertiaryColor:      '#FF8C00',
+          tertiaryBorderColor:'#000000',
+          tertiaryTextColor:  '#000000',
+          lineColor:          '#000000',
+          textColor:          '#000000',
+          nodeBorder:         '#000000',
+          clusterBkg:         isDark ? '#2a2a2a' : '#fff8dc',
+          clusterBorder:      '#000000',
+          edgeLabelBackground:'transparent',
+          /* Sequence diagram */
+          actorBkg:           '#E30B20',
+          actorBorder:        '#000000',
+          actorTextColor:     '#ffffff',
+          actorLineColor:     '#000000',
+          signalColor:        '#000000',
+          signalTextColor:    '#000000',
+          labelBoxBkgColor:   '#FFD700',
+          labelBoxBorderColor:'#000000',
+          labelTextColor:     '#000000',
+          loopTextColor:      '#000000',
+          noteBkgColor:       '#FFD700',
+          noteBorderColor:    '#000000',
+          noteTextColor:      '#000000',
+          activationBkgColor: '#FF8C00',
+          activationBorderColor:'#000000',
+          sequenceNumberColor:'#ffffff',
+          background:         isDark ? '#1a1a1a' : '#ffffff'
+        }
+      };
+    }
+    var initMode = document.documentElement.getAttribute('data-theme') || 'light';
+    mermaid.initialize(getMermaidConfig(initMode));
+    /* Register theme change hook for dark/light toggle */
+    window.globalFn = window.globalFn || {};
+    window.globalFn.themeChange = window.globalFn.themeChange || {};
+    window.globalFn.themeChange.mermaid = function(mode) {
+      mermaid.initialize(getMermaidConfig(mode));
+      document.querySelectorAll('.mermaid[data-processed]').forEach(function(el) {
+        el.removeAttribute('data-processed');
+      });
+      mermaid.run();
+    };
+  })();
+</script>
+<div class="js-pjax"><script>mermaid.run();</script></div></div><!-- pjax--><script>const pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: ['title','#body-wrap','#site-config','meta[name="description"]','.js-pjax','meta[property^="og:"]','#config-diff'],
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+})
+
+document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+})
+
+document.addEventListener('pjax:complete', () => {
+    window.refreshFn()
+
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+        const newScript = document.createElement('script')
+        const content = item.text || item.textContent || item.innerHTML || ""
+        Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        newScript.appendChild(document.createTextNode(content))
+        item.parentNode.replaceChild(newScript, item)
+    })
+
+    GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+})
+
+document.addEventListener('pjax:error', (e) => {
+    if (e.request.status === 404) {
+        pjax.loadUrl('/404.html')
+    }
+})</script><!-- theme--><script>initTheme = () => {
+    let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const cachedMode = utils.saveToLocal.get('theme');
+    if (cachedMode === undefined) {
+        const nowMode =
+            isDarkMode ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', nowMode);
+    } else {
+        document.documentElement.setAttribute('data-theme', cachedMode);
+    }
+    typeof rm === 'object' && rm.mode(cachedMode === 'dark' && isDarkMode)
+}
+initTheme()</script><!-- google adsense--><!-- search--><!-- Tianli-Talk--><!-- music--><div class="needEndHide" id="nav-music" onclick="sco.musicToggle()"><div id="nav-music-hoverTips">音乐已暂停</div><meting-js id="12344278889" server="netease" type="playlist" mutex="true" preload="none" data-lrctype="0" order="random" theme="var(--efu-main)"></meting-js></div></body></html><script>const posts=["2026/03/15/2026-03-15-安全模型/","2026/03/14/2026-03-14-插件系统/","2026/03/13/2026-03-13-上下文记忆/","2026/03/12/2026-03-12-Agent运行时/","2026/03/11/2026-03-11-多通道架构/","2026/03/10/2026-03-10-Gateway/","2026/03/07/2026-03-07-CLI/","2026/03/02/2026-03-02-项目概览与架构全景/","2025/08/20/2025-08-20-大模型 Agent 实践/","2025/06/09/2025-06-09-大模型 Rag 实践/","2025/02/09/2025-02-09-交易系统构建/","2024/12/15/2024-12-15-比特币价值分析 copy/","2024/12/14/2024-12-14-投资交易初探/","2024/12/13/2024-12-13-加密货币概览/","2024/08/19/2024-08-19-大模型 Fine-tuning 实践/","2024/07/03/2024-07-03-解析大型语言模型的高效训练与推理之道/","2024/06/03/2024-06-03-《全面理解机器智能与生成式 AI 加速的新工业革命》/","2024/05/25/2024-05-25-faas-本地调试/","2024/05/24/2024-05-24-faas-静态页面/","2024/05/23/2024-05-23-faas-数据库能力/","2024/05/22/2024-05-22-faas-服务治理/","2024/05/21/2024-05-21-faas-编译部署/","2023/10/19/2023-10-19-faas-运行时/","2023/10/16/2023-10-16-faas-整体设计/","2023/08/14/2023-08-14-《富爸爸穷爸爸》读书笔记/","2023/02/03/2023-02-03-laf平台学习/","2022/10/14/2022-10-14-NodeJS学习/","2022/05/01/2022-05-01-webpack构建提速插件/","2022/04/14/2022-04-14-webpack tree shaking 记录/","2022/02/10/2022-02-10-NestJS设计思想/","2022/01/28/2022-01-28-前端项目构建速度优化调研/","2021/12/04/2021-12-04-px2rem或px2vw响应式方案探究/","2021/10/20/2021-10-20-hexo源码分析（四）/","2021/10/19/2021-10-19-hexo源码分析（三）/","2021/10/11/2021-10-11-hexo源码分析（二）/","2021/09/30/2021-09-30-hexo源码分析（一）/","2021/07/29/2021-07-29-可视化上报埋点方案/","2021/07/25/2021-07-25-脚手架设计/","2021/07/21/2021-07-21-业务基础库封装设计/","2021/06/10/2021-06-10-JWT梳理/","2020/12/07/2020-12-07-Vue生命周期/","2020/12/07/2020-12-07-Vuex整理/","2020/12/07/2020-12-07-Vue-Router/","2020/12/07/2020-12-07-Vue整理/","2020/12/06/2020-12-06-TCP协议/","2020/12/05/2020-12-05-POST和GET区别/","2020/12/04/2020-12-04-OSI模型整理/","2020/12/03/2020-12-03-微任务和宏任务/","2020/12/03/2020-12-03-JavaScript的面向对象/","2020/12/03/2020-12-03-JavaScript总结/","2020/12/02/2020-12-02-HTTP协议/","2020/12/01/2020-12-01-Cookie和Session对比/","2020/11/03/2020-11-03-常见性能优化手段/","2020/11/02/2020-11-02-浏览器同源跨域/","2020/11/01/2020-11-01-断点下载方案/","2020/05/07/2020-05-07-浏览器重绘和requestAnimationFrame/","2019/08/03/2019-08-03-vue-cli源码学习2.x/","2019/07/24/2019-07-24-vue-cli源码学习1.x/","2019/07/12/2019-07-12-Git分支相关/","2019/03/12/2019-03-12-使用webpack做一次项目优化/","2019/02/18/2019-02-18-解决回调地狱/","2019/01/19/2019-01-19-内联元素的一些探究/","2018/12/02/2018-12-02-论文查询平台/","2018/09/18/2018-09-18-CSS绘制三道杠和小圆点/","2018/09/10/2018-09-10-DDA算法和Bresenham算法画线/","2018/09/07/2018-09-07-CSS-iScroll实现水平滚动实例/","2018/09/06/2018-9-6小结/","2018/04/24/2018-04-24-JS原型链/","2018/04/16/2018-04-16-动手写一个hexo主题（下）/","2018/03/31/2018-03-31-gulp整理/","2018/03/28/2018-03-28-动手写一个hexo主题（上）/","2018/03/24/2018-03-24-npm的一些简单整理/","2018/03/17/2018-03-17-background属性和img标签/","2018/03/14/2018-03-14-如何实现一个轮播图/","2018/03/10/2018-03-10-Express+MySQL实现登陆界面/","2018/03/09/2018-03-09-数字图像处理和PS/","2018/03/06/2018-03-06-模板引擎ejs+gulp的使用/","2018/01/21/2018-1-21-JS对象整理/","2018/01/11/2018-1-11-实现一个问卷平台/","2017/10/24/2017-10-24-如何实现一个导航栏/","2017/10/18/2017-10-18-jQuery和原生DOM操作对比/","2017/10/10/2017-10-10-DOM操作/","2017/09/28/2017-09-28-页面常用布局整理/","2017/09/21/2017-09-21-hexo博客构建/"];function toRandomPost(){ pjax.loadUrl(GLOBAL_CONFIG.root+posts[Math.floor(Math.random()*posts.length)]); }</script>
