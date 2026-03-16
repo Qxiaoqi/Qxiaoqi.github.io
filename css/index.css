@@ -2185,11 +2185,11 @@ span.tags-punctuation i {
   font-size: 15px;
 }
 #article-container code:not([class*='language-']) {
-  color: var(--efu-white);
+  color: var(--efu-code-color, #476582);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   margin: 0 4px;
-  background: var(--efu-pink);
+  background: var(--efu-code-bg, #f0f2f5);
   line-height: 2;
   box-shadow: var(--efu-shadow-border);
 }
@@ -2203,10 +2203,17 @@ span.tags-punctuation i {
 }
 #article-container ul,
 #article-container ol {
-  padding: 0;
-  margin-top: 0.4rem;
+  padding-left: 0.9em;
+  margin: 0.5rem 0 1rem;
   list-style: none;
   counter-reset: li 0;
+}
+#article-container ul ul,
+#article-container ol ul,
+#article-container ul ol,
+#article-container ol ol {
+  margin: 0.35rem 0 0.2rem;
+  padding-left: 1.1em;
 }
 #article-container ul li:before,
 #article-container ol li:before {
@@ -2220,14 +2227,21 @@ span.tags-punctuation i {
 #article-container ul li:not(.tab),
 #article-container ol li:not(.tab) {
   position: relative;
-  margin: 0.2rem 0;
+  margin: 0.35rem 0;
+  line-height: 1.8;
+}
+#article-container ul li:not(.tab) > ul,
+#article-container ol li:not(.tab) > ul,
+#article-container ul li:not(.tab) > ol,
+#article-container ol li:not(.tab) > ol {
+  margin: 0.35rem 0 0.15rem;
 }
 #article-container ul li:not(.tab) p,
 #article-container ol li:not(.tab) p {
   margin: 0;
 }
 #article-container ul > li:not(.tab) {
-  padding: 0.2em 0.2em 0.2em 1.4em;
+  padding: 0.2em 0.2em 0.2em 1.5em;
 }
 #article-container ul > li:not(.tab):before {
   margin: 0;
@@ -2255,7 +2269,7 @@ span.tags-punctuation i {
   line-height: 1.7;
 }
 #article-container ol > li:not(.tab) {
-  padding: 0.2em 0.2em 0.2em 1.8em;
+  padding: 0.2em 0.2em 0.2em 2em;
 }
 #article-container ol > li:before {
   content: counter(li);
@@ -9498,6 +9512,8 @@ div#banners .bannerText {
   --efu-orange: #ff953e;
   --efu-fontcolor: #f7f7fa;
   --efu-background: #18171d;
+  --efu-code-color: #c9d1d9;
+  --efu-code-bg: #30343f;
   --efu-reverse: #fff;
   --efu-maskbg: rgba(0,0,0,0.6);
   --efu-maskbgdeep: rgba(0,0,0,0.85);
@@ -9544,6 +9560,8 @@ div#banners .bannerText {
   --efu-purple: #7a60d2;
   --efu-fontcolor: #363636;
   --efu-background: #f7f9fe;
+  --efu-code-color: #476582;
+  --efu-code-bg: #f0f2f5;
   --efu-reverse: #000;
   --efu-maskbg: rgba(255,255,255,0.6);
   --efu-maskbgdeep: rgba(255,255,255,0.85);
@@ -9934,9 +9952,118 @@ figure.highlight .code-expand-btn:not(.expand-done) ~ pre {
 .mermaid {
   display: flex;
   justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+.mermaid svg {
+  display: block;
+  flex-shrink: 0;
+  max-width: none !important;
+  height: auto;
+}
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
+  stroke: #000 !important;
+  stroke-width: 4px !important;
+}
+.mermaid .node rect {
+  fill: #e30b20 !important;
+}
+.mermaid .node rect ~ .label text,
+.mermaid .node rect ~ .label span {
+  fill: #fff !important;
+  color: #fff !important;
+}
+.mermaid .node polygon {
+  fill: #ffd700 !important;
+}
+.mermaid .node polygon ~ .label text,
+.mermaid .node polygon ~ .label span {
+  fill: #000 !important;
+  color: #000 !important;
+}
+.mermaid .node circle,
+.mermaid .node ellipse {
+  fill: #ff8c00 !important;
+}
+.mermaid .node circle ~ .label text,
+.mermaid .node circle ~ .label span,
+.mermaid .node ellipse ~ .label text,
+.mermaid .node ellipse ~ .label span {
+  fill: #000 !important;
+  color: #000 !important;
+}
+.mermaid .edgePath .path {
+  stroke: #000 !important;
+  stroke-width: 3px !important;
+}
+.mermaid marker path {
+  fill: #000 !important;
+}
+.mermaid .edgeLabel {
+  background-color: transparent !important;
+  font-weight: bold;
+}
+.mermaid .edgeLabel rect {
+  fill: none !important;
+  stroke: none !important;
+}
+.mermaid .edgeLabel span {
+  background: transparent !important;
+  color: #000 !important;
+}
+.mermaid .cluster rect {
+  stroke-width: 4px !important;
+  stroke: #000 !important;
+  fill: #fff8dc !important;
+}
+.mermaid .actor {
+  stroke-width: 4px !important;
+  stroke: #000 !important;
+  fill: #e30b20 !important;
+}
+.mermaid .actor-man circle,
+.mermaid .actor-man line {
+  stroke: #000 !important;
+  stroke-width: 3px !important;
+}
+.mermaid text.actor {
+  fill: #fff !important;
+}
+.mermaid line[class*="messageLine"] {
+  stroke-width: 3px !important;
+  stroke: #000 !important;
+}
+.mermaid .activation0,
+.mermaid .activation1,
+.mermaid .activation2 {
+  stroke-width: 3px !important;
+  stroke: #000 !important;
+  fill: #ff8c00 !important;
+}
+.mermaid .note rect {
+  stroke-width: 4px !important;
+  stroke: #000 !important;
+  fill: #ffd700 !important;
+}
+.mermaid .note text {
+  fill: #000 !important;
+}
+.mermaid .loopLine {
+  stroke-width: 3px !important;
+  stroke: #000 !important;
 }
 .mermaid text {
-  fill: var(--efu-fontcolor) !important;
+  fill: #000 !important;
+}
+.mermaid .label text {
+  fill: #fff !important;
+}
+.mermaid .edgeLabel text {
+  fill: #000 !important;
 }
 #article-container .tabs {
   position: relative;
