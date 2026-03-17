@@ -93,6 +93,274 @@ const initObserver = () => {
         observer.observe(commentElement);
     }
 };
+let mermaidViewerState;
+const clampMermaidViewerValue = (value, min, max) => Math.min(Math.max(value, min), max);
+const getMermaidViewerDiagramSize = svg => {
+    const viewBox = svg.viewBox?.baseVal;
+    if (viewBox?.width > 0 && viewBox?.height > 0) return {width: viewBox.width, height: viewBox.height};
+    const widthAttr = svg.getAttribute('width');
+    const heightAttr = svg.getAttribute('height');
+    const width = widthAttr && !widthAttr.includes('%') ? parseFloat(widthAttr) : NaN;
+    const height = heightAttr && !heightAttr.includes('%') ? parseFloat(heightAttr) : NaN;
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) return {width, height};
+    const rect = svg.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) return {width: rect.width, height: rect.height};
+    try {
+        const box = svg.getBBox();
+        if (box.width > 0 && box.height > 0) return {width: box.width, height: box.height};
+    } catch (error) {
+        console.warn('Failed to read Mermaid SVG bounds:', error);
+    }
+    return {width: 960, height: 640};
+}
+const getMermaidViewerTitle = diagram => {
+    const headings = document.querySelectorAll('#article-container h1, #article-container h2, #article-container h3, #article-container h4, #article-container h5, #article-container h6');
+    let title = '';
+    headings.forEach(heading => {
+        if (heading.compareDocumentPosition(diagram) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            title = heading.textContent.trim();
+        }
+    });
+    return title || 'Mermaid 图表';
+}
+const getMermaidViewer = () => {
+    if (mermaidViewerState) return mermaidViewerState;
+    const overlay = document.createElement('div');
+    overlay.className = 'mermaid-viewer';
+    overlay.innerHTML = `
+        <div class="mermaid-viewer__panel" role="dialog" aria-modal="true" aria-label="Mermaid 图表查看器">
+            <div class="mermaid-viewer__header">
+                <div class="mermaid-viewer__meta">
+                    <div class="mermaid-viewer__title"></div>
+                    <div class="mermaid-viewer__hint">拖动画布，滚轮或按钮缩放，双击复位，按 ESC 关闭</div>
+                </div>
+                <div class="mermaid-viewer__actions">
+                    <button type="button" class="mermaid-viewer__action" data-action="zoom-out" aria-label="缩小">-</button>
+                    <button type="button" class="mermaid-viewer__action" data-action="fit">适应</button>
+                    <button type="button" class="mermaid-viewer__action" data-action="zoom-in" aria-label="放大">+</button>
+                    <div class="mermaid-viewer__zoom" aria-live="polite">100%</div>
+                    <button type="button" class="mermaid-viewer__close">关闭</button>
+                </div>
+            </div>
+            <div class="mermaid-viewer__body">
+                <div class="mermaid-viewer__stage"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    const title = overlay.querySelector('.mermaid-viewer__title');
+    const stage = overlay.querySelector('.mermaid-viewer__stage');
+    const zoom = overlay.querySelector('.mermaid-viewer__zoom');
+    const state = {
+        canvas: null,
+        width: 1,
+        height: 1,
+        scale: 1,
+        minScale: 0.05,
+        maxScale: 12,
+        x: 0,
+        y: 0,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        originX: 0,
+        originY: 0
+    };
+    const updateZoom = () => {
+        zoom.textContent = `${Math.round(state.scale * 100)}%`;
+    };
+    const clampPosition = () => {
+        if (!state.canvas) return;
+        const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const contentWidth = state.width * state.scale;
+        const contentHeight = state.height * state.scale;
+        const edgePadding = 48;
+        if (contentWidth <= rect.width) {
+            state.x = (rect.width - contentWidth) / 2;
+        } else {
+            state.x = clampMermaidViewerValue(state.x, rect.width - contentWidth - edgePadding, edgePadding);
+        }
+        if (contentHeight <= rect.height) {
+            state.y = (rect.height - contentHeight) / 2;
+        } else {
+            state.y = clampMermaidViewerValue(state.y, rect.height - contentHeight - edgePadding, edgePadding);
+        }
+    };
+    const render = () => {
+        if (!state.canvas) return;
+        clampPosition();
+        state.canvas.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+        updateZoom();
+    };
+    const setScaleAtPoint = (nextScale, originX, originY) => {
+        if (!state.canvas) return;
+        const scale = clampMermaidViewerValue(nextScale, state.minScale, state.maxScale);
+        if (Math.abs(scale - state.scale) < 0.001) return;
+        const contentX = (originX - state.x) / state.scale;
+        const contentY = (originY - state.y) / state.scale;
+        state.scale = scale;
+        state.x = originX - contentX * state.scale;
+        state.y = originY - contentY * state.scale;
+        render();
+    };
+    const zoomFromCenter = factor => {
+        const rect = stage.getBoundingClientRect();
+        setScaleAtPoint(state.scale * factor, rect.width / 2, rect.height / 2);
+    };
+    const fitToStage = () => {
+        if (!state.canvas) return;
+        const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const padding = 48;
+        const fitScale = Math.min(
+            Math.max((rect.width - padding) / state.width, 0.05),
+            Math.max((rect.height - padding) / state.height, 0.05)
+        );
+        const safeFitScale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
+        state.minScale = Math.max(Math.min(safeFitScale * 0.35, safeFitScale), 0.05);
+        state.maxScale = Math.max(safeFitScale * 6, 4);
+        state.scale = safeFitScale;
+        state.x = (rect.width - state.width * state.scale) / 2;
+        state.y = (rect.height - state.height * state.scale) / 2;
+        render();
+    };
+    const stopPanning = pointerId => {
+        if (pointerId != null && pointerId !== state.pointerId) return;
+        if (state.pointerId != null && stage.hasPointerCapture(state.pointerId)) {
+            stage.releasePointerCapture(state.pointerId);
+        }
+        state.pointerId = null;
+        stage.classList.remove('is-dragging');
+    };
+    const close = () => {
+        stopPanning();
+        overlay.classList.remove('is-active');
+        document.body.classList.remove('mermaid-viewer-open');
+        stage.textContent = '';
+        state.canvas = null;
+    };
+    overlay.querySelectorAll('.mermaid-viewer__action').forEach(button => {
+        button.addEventListener('click', () => {
+            const action = button.dataset.action;
+            if (action === 'zoom-in') zoomFromCenter(1.2);
+            if (action === 'zoom-out') zoomFromCenter(1 / 1.2);
+            if (action === 'fit') fitToStage();
+        });
+    });
+    overlay.querySelector('.mermaid-viewer__close').addEventListener('click', close);
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) close();
+    });
+    stage.addEventListener('wheel', event => {
+        if (!state.canvas) return;
+        event.preventDefault();
+        const rect = stage.getBoundingClientRect();
+        const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+        setScaleAtPoint(state.scale * zoomFactor, event.clientX - rect.left, event.clientY - rect.top);
+    }, {passive: false});
+    stage.addEventListener('dblclick', () => fitToStage());
+    stage.addEventListener('pointerdown', event => {
+        if (!state.canvas || event.button !== 0) return;
+        state.pointerId = event.pointerId;
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        state.originX = state.x;
+        state.originY = state.y;
+        stage.setPointerCapture(event.pointerId);
+        stage.classList.add('is-dragging');
+    });
+    stage.addEventListener('pointermove', event => {
+        if (!state.canvas || event.pointerId !== state.pointerId) return;
+        state.x = state.originX + event.clientX - state.startX;
+        state.y = state.originY + event.clientY - state.startY;
+        render();
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+        stage.addEventListener(type, event => stopPanning(event.pointerId));
+    });
+    window.addEventListener('resize', () => {
+        if (overlay.classList.contains('is-active')) fitToStage();
+    });
+    document.addEventListener('keydown', event => {
+        if (!overlay.classList.contains('is-active')) return;
+        if (event.key === 'Escape') close();
+        if (event.key === '+' || event.key === '=') zoomFromCenter(1.2);
+        if (event.key === '-') zoomFromCenter(1 / 1.2);
+        if (event.key === '0') fitToStage();
+    });
+    mermaidViewerState = {overlay, title, stage, close, fitToStage, state};
+    window.closeMermaidViewer = close;
+    return mermaidViewerState;
+}
+const openMermaidViewer = diagram => {
+    const svg = diagram.querySelector('svg');
+    if (!svg) return;
+    const viewer = getMermaidViewer();
+    const size = getMermaidViewerDiagramSize(svg);
+    const frame = document.createElement('div');
+    frame.className = 'mermaid mermaid-viewer__canvas';
+    const clonedSvg = svg.cloneNode(true);
+    clonedSvg.style.maxWidth = 'none';
+    clonedSvg.style.width = `${size.width}px`;
+    clonedSvg.style.height = `${size.height}px`;
+    frame.appendChild(clonedSvg);
+    viewer.stage.replaceChildren(frame);
+    viewer.state.canvas = frame;
+    viewer.state.width = size.width;
+    viewer.state.height = size.height;
+    viewer.title.textContent = getMermaidViewerTitle(diagram);
+    viewer.overlay.classList.add('is-active');
+    document.body.classList.add('mermaid-viewer-open');
+    window.requestAnimationFrame(() => viewer.fitToStage());
+}
+window.initMermaidViewer = () => {
+    document.querySelectorAll('#article-container .mermaid').forEach(diagram => {
+        if (!diagram.querySelector('svg')) return;
+        diagram.classList.add('mermaid-interactive');
+        let toolbar = diagram.querySelector('.mermaid-toolbar');
+        if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.className = 'mermaid-toolbar';
+            toolbar.innerHTML = `
+                <span class="mermaid-hint">正文为预览，点击图表放大查看细节</span>
+                <button type="button" class="mermaid-open">放大查看</button>
+            `;
+        }
+        let preview = diagram.querySelector('.mermaid-preview');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.className = 'mermaid-preview';
+        }
+        Array.from(diagram.childNodes).forEach(node => {
+            if (node === toolbar || node === preview) return;
+            preview.appendChild(node);
+        });
+        diagram.replaceChildren(toolbar, preview);
+        const openButton = toolbar.querySelector('.mermaid-open');
+        if (diagram.dataset.mermaidEnhanced === 'true') return;
+        diagram.dataset.mermaidEnhanced = 'true';
+        let pointerStart;
+        const clearPointer = () => pointerStart = null;
+        openButton.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            openMermaidViewer(diagram);
+        });
+        diagram.addEventListener('pointerdown', event => {
+            if (event.target.closest('.mermaid-toolbar')) return;
+            pointerStart = {x: event.clientX, y: event.clientY};
+        });
+        diagram.addEventListener('pointerup', event => {
+            if (!pointerStart || event.target.closest('.mermaid-toolbar, a, button')) return clearPointer();
+            const deltaX = Math.abs(event.clientX - pointerStart.x);
+            const deltaY = Math.abs(event.clientY - pointerStart.y);
+            clearPointer();
+            if (deltaX <= 6 && deltaY <= 6) openMermaidViewer(diagram);
+        });
+        ['pointercancel', 'pointerleave'].forEach(type => diagram.addEventListener(type, clearPointer));
+    });
+};
 const addCopyright = () => {
     if (!GLOBAL_CONFIG.copyright) return;
     const {limit, author, link, source, info} = GLOBAL_CONFIG.copyright;

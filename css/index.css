@@ -2228,7 +2228,7 @@ span.tags-punctuation i {
 #article-container ol li:not(.tab) {
   position: relative;
   margin: 0.35rem 0;
-  line-height: 1.8;
+  line-height: 1.65;
 }
 #article-container ul li:not(.tab) > ul,
 #article-container ol li:not(.tab) > ul,
@@ -2241,46 +2241,47 @@ span.tags-punctuation i {
   margin: 0;
 }
 #article-container ul > li:not(.tab) {
-  padding: 0.2em 0.2em 0.2em 1.5em;
+  margin: 0.08rem 0;
+  line-height: 1.7;
+  padding: 0.2em 0.2em 0.2em 1.2em;
 }
 #article-container ul > li:not(.tab):before {
   margin: 0;
-  top: 0.78em;
-  width: 0.42em;
-  height: 0.42em;
-  border-radius: 0.42em;
-  background: 0 0;
+  top: 0.8em;
+  width: 0.32em;
+  height: 0.32em;
+  border-radius: 50%;
   content: "";
-  line-height: 0.42em;
-  border: 0.21em solid var(--efu-lighttext);
-  background: var(--efu-lighttext);
+  background: var(--efu-main);
 }
 #article-container ol > li:before {
-  margin-top: 0.65em;
-  width: 1.45em;
-  height: 1.45em;
-  border-radius: 0.725em;
-  text-align: center;
-  font-size: 0.85em;
-  color: var(--efu-white);
-  line-height: 1.45em;
+  top: 0.16em;
+  width: 1.7em;
+  margin-top: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 0.95em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--efu-main);
+  line-height: 1.65;
 }
 #article-container ol ul li {
-  line-height: 1.7;
+  line-height: 1.6;
 }
 #article-container ol > li:not(.tab) {
-  padding: 0.2em 0.2em 0.2em 2em;
+  padding: 0.2em 0.2em 0.2em 1.8em;
 }
 #article-container ol > li:before {
-  content: counter(li);
+  content: counter(li) ".";
   counter-increment: li 1;
 }
 #article-container ol > li > ol > li:before {
-  content: counter(li, lower-alpha);
+  content: counter(li, lower-alpha) ".";
   counter-increment: li;
 }
 #article-container ol > li > ol > li > ol > li:before {
-  content: counter(li, lower-roman);
+  content: counter(li, lower-roman) ".";
   counter-increment: li;
 }
 #article-container.post-content h1,
@@ -9287,6 +9288,57 @@ div#banners .bannerText {
     border-radius: 12px;
   }
 }
+@media screen and (min-width: 1300px) {
+  #post #pagination.pagination-post--inline {
+    position: static;
+    width: auto;
+    height: auto;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
+    opacity: 1;
+    overflow: hidden;
+    cursor: default;
+    box-shadow: var(--efu-shadow-border);
+  }
+  #post #pagination.pagination-post--inline .prev-post.pull-left {
+    display: block;
+  }
+  #post #pagination.pagination-post--inline .next-post.pull-right {
+    width: 50%;
+  }
+  #post #pagination.pagination-post--inline .next-post,
+  #post #pagination.pagination-post--inline .prev-post {
+    width: 50%;
+    background: var(--efu-secondbg);
+    text-align: left;
+  }
+  #post #pagination.pagination-post--inline .prev-post a {
+    border-right: var(--efu-main-op);
+    border-right-width: 0.5px;
+    border-right-style: solid;
+    height: 150px;
+    padding: 0;
+  }
+  #post #pagination.pagination-post--inline .next-post a {
+    border-left: var(--efu-main-op);
+    border-left-width: 0.5px;
+    border-left-style: solid;
+    display: flex;
+    align-items: flex-start;
+    height: 150px;
+    padding: 0;
+  }
+  #post #pagination.pagination-post--inline .pagination-info {
+    padding: 1rem 1.5rem 1rem 1.5rem;
+  }
+  #post #pagination.pagination-post--inline .next_info,
+  #post #pagination.pagination-post--inline .prev_info {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+}
 #post #pagination .next-post,
 #post #pagination .prev-post,
 #post #pagination .next-post.pull-right,
@@ -9950,16 +10002,24 @@ figure.highlight .code-expand-btn:not(.expand-done) ~ pre {
   opacity: 1;
 }
 .mermaid {
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid rgba(15,23,42,0.12);
+  border-radius: 22px;
+  background: #f3f4f6;
+  box-shadow: 0 16px 40px rgba(15,23,42,0.06);
 }
 .mermaid svg {
   display: block;
   flex-shrink: 0;
-  max-width: none !important;
+  max-width: 100% !important;
+  width: auto;
   height: auto;
+  margin: 0 auto;
 }
 .mermaid .node rect,
 .mermaid .node circle,
@@ -10064,6 +10124,195 @@ figure.highlight .code-expand-btn:not(.expand-done) ~ pre {
 }
 .mermaid .edgeLabel text {
   fill: #000 !important;
+}
+.mermaid-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.mermaid-preview {
+  overflow: auto;
+  max-height: clamp(20rem, 60vh, 35rem);
+  padding: 0 0 0.25rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.mermaid-preview::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.mermaid-preview::-webkit-scrollbar-thumb {
+  background: rgba(15,23,42,0.18);
+  border-radius: 999px;
+}
+.mermaid-hint {
+  color: var(--efu-secondtext);
+  font-size: 0.8rem;
+}
+.mermaid-open {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  background: var(--efu-fontcolor);
+  color: var(--efu-card-bg);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.mermaid-open:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.mermaid-interactive {
+  cursor: zoom-in;
+}
+body.mermaid-viewer-open {
+  overflow: hidden;
+}
+.mermaid-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 2vw, 2rem);
+  background: rgba(15,23,42,0.72);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.mermaid-viewer.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mermaid-viewer__panel {
+  display: flex;
+  flex-direction: column;
+  width: 96vw;
+  height: 92vh;
+  overflow: hidden;
+  border: var(--style-border);
+  border-radius: 24px;
+  background: var(--efu-card-bg);
+  box-shadow: 0 24px 64px rgba(15,23,42,0.24);
+}
+.mermaid-viewer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: var(--style-border);
+}
+.mermaid-viewer__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.mermaid-viewer__title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.mermaid-viewer__hint {
+  color: var(--efu-secondtext);
+  font-size: 0.82rem;
+}
+.mermaid-viewer__action {
+  border: none;
+  border-radius: 999px;
+  min-width: 2.3rem;
+  padding: 0.45rem 0.85rem;
+  background: #e5e7eb;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.mermaid-viewer__action:hover {
+  background: #d1d5db;
+  transform: translateY(-1px);
+}
+.mermaid-viewer__zoom {
+  min-width: 4rem;
+  padding: 0 0.15rem;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}
+.mermaid-viewer__close {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  background: var(--efu-fontcolor);
+  color: var(--efu-card-bg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mermaid-viewer__body {
+  flex: 1;
+  overflow: hidden;
+  padding: 1rem 1.25rem 1.5rem;
+  background: #f3f4f6;
+}
+.mermaid-viewer__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #e5e7eb;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.mermaid-viewer__stage.is-dragging {
+  cursor: grabbing;
+}
+.mermaid-viewer__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  border-radius: 0;
+  transform-origin: top left;
+  will-change: transform;
+}
+.mermaid-viewer__canvas svg {
+  margin: 0;
+}
+@media screen and (max-width: 768px) {
+  .mermaid {
+    padding: 0.85rem;
+  }
+  .mermaid-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .mermaid-viewer__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mermaid-viewer__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 #article-container .tabs {
   position: relative;
